@@ -1,0 +1,6 @@
+@GoodReadsAPI.Server_HostAddress = http://localhost:5068
+
+GET {{GoodReadsAPI.Server_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

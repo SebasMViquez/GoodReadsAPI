@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="goodreadsapi.client/goodreadsapi.client.esproj">
+    <Build />
+    <Deploy />
+  </Project>
+  <Project Path="GoodReadsAPI.Server/GoodReadsAPI.Server.csproj" />
+</Solution>

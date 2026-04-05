@@ -12,6 +12,9 @@ node_modules/
 dist/
 dist-ssr/
 *.local
+*.tsbuildinfo
+goodreadsapi.client/vite.config.d.ts
+goodreadsapi.client/vite.config.js
 
 # Editor
 .vscode/*
@@ -33,3 +36,5 @@ obj/
 Debug/
 Release/
 coverage/
+.dotnet/
+publish-check/

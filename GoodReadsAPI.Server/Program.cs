@@ -1,3 +1,5 @@
+using Microsoft.Extensions.FileProviders;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -7,9 +9,26 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+var clientDistPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "goodreadsapi.client", "dist"));
+var hasClientDist = Directory.Exists(clientDistPath);
+PhysicalFileProvider? clientDistProvider = hasClientDist ? new PhysicalFileProvider(clientDistPath) : null;
 
-app.UseDefaultFiles();
-app.MapStaticAssets();
+if (clientDistProvider is not null)
+{
+    app.UseDefaultFiles(new DefaultFilesOptions
+    {
+        FileProvider = clientDistProvider,
+    });
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = clientDistProvider,
+    });
+}
+else
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -23,6 +42,16 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapFallbackToFile("/index.html");
+if (clientDistProvider is not null)
+{
+    app.MapFallbackToFile("{*path:nonfile}", "index.html", new StaticFileOptions
+    {
+        FileProvider = clientDistProvider,
+    });
+}
+else
+{
+    app.MapFallbackToFile("index.html");
+}
 
 app.Run();

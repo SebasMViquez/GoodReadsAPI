@@ -27,7 +27,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useToast } from '@/context/ToastContext';
 import { getGenreLabel } from '@/i18n/ui';
 import { genreLabels } from '@/services/api/catalog';
-import { defaultAppSettings, preferencesStore } from '@/services/storage/preferencesStore';
+import { preferencesStore } from '@/services/storage/preferencesStore';
 import type {
   AppSettings,
   InterfaceDensity,

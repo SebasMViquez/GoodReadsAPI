@@ -1,57 +1,37 @@
-using Microsoft.Extensions.FileProviders;
+﻿var builder = WebApplication.CreateBuilder(args);
 
-var builder = WebApplication.CreateBuilder(args);
+const string FrontendDevCorsPolicy = "FrontendDevCors";
 
-// Add services to the container.
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(FrontendDevCorsPolicy, policy =>
+    {
+        if (allowedOrigins.Length == 0)
+        {
+            policy.AllowAnyOrigin()
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+            return;
+        }
+
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
 
 var app = builder.Build();
-var clientDistPath = Path.GetFullPath(Path.Combine(app.Environment.ContentRootPath, "..", "goodreadsapi.client", "dist"));
-var hasClientDist = Directory.Exists(clientDistPath);
-PhysicalFileProvider? clientDistProvider = hasClientDist ? new PhysicalFileProvider(clientDistPath) : null;
-
-if (clientDistProvider is not null)
-{
-    app.UseDefaultFiles(new DefaultFilesOptions
-    {
-        FileProvider = clientDistProvider,
-    });
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = clientDistProvider,
-    });
-}
-else
-{
-    app.UseDefaultFiles();
-    app.UseStaticFiles();
-}
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
 
 app.UseHttpsRedirection();
-
+app.UseCors(FrontendDevCorsPolicy);
 app.UseAuthorization();
 
 app.MapControllers();
-
-if (clientDistProvider is not null)
-{
-    app.MapFallbackToFile("{*path:nonfile}", "index.html", new StaticFileOptions
-    {
-        FileProvider = clientDistProvider,
-    });
-}
-else
-{
-    app.MapFallbackToFile("index.html");
-}
 
 app.Run();

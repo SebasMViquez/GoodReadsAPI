@@ -7,6 +7,7 @@ ASP.NET Core Web API for GoodReads, connected to Supabase (PostgREST) for persis
 - Health endpoint ready: `GET /api/health`
 - Books CRUD ready: `GET/POST/PUT/DELETE /api/books`
 - Book by slug ready: `GET /api/books/slug/{slug}`
+- Swagger UI ready in development: `GET /swagger`
 
 ## Layers
 
@@ -50,6 +51,11 @@ dotnet user-secrets set "Supabase:ServiceRoleKey" "<service-role-key>" --project
 dotnet restore
 dotnet run
 ```
+
+Swagger local URLs:
+
+- `http://localhost:5068/swagger`
+- `https://localhost:7039/swagger`
 
 ## Continuous codex docs
 

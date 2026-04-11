@@ -27,3 +27,22 @@
 
 - This phase enables real persistence against Supabase PostgREST for books.
 - Next phases should mirror this pattern for `authors`, `reviews`, `users`, auth sessions, and library state.
+
+## 2026-04-11
+
+### Added
+
+- Swagger/OpenAPI support for backend endpoint exploration:
+  - `Swashbuckle.AspNetCore` package reference.
+  - API explorer and Swagger generator registration in DI.
+  - Swagger middleware/UI enabled in `Development`.
+
+### Changed
+
+- `Program.cs` now maps root `/` to `/swagger` in `Development` for quicker local API testing.
+- `Program.cs` returns a simple health-style message on `/` outside `Development`.
+- Server README now documents Swagger URL for local testing.
+
+### Notes
+
+- This change keeps controllers as the source of truth for endpoint contracts while improving local testing flow.

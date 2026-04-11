@@ -32,6 +32,8 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.Configure<SupabaseOptions>(
     builder.Configuration.GetSection(SupabaseOptions.SectionName));
 builder.Services.AddHttpClient<ISupabaseRestClient, SupabaseRestClient>((serviceProvider, client) =>
@@ -49,6 +51,17 @@ builder.Services.AddScoped<IBookRepository, SupabaseBookRepository>();
 builder.Services.AddScoped<IBookService, BookService>();
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+    app.MapGet("/", () => Results.Redirect("/swagger"));
+}
+else
+{
+    app.MapGet("/", () => Results.Ok("GoodReads API is running."));
+}
 
 app.UseHttpsRedirection();
 app.UseCors(FrontendDevCorsPolicy);

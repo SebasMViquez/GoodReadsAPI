@@ -1,12 +1,14 @@
 ﻿# GoodReadsAPI Server
 
-ASP.NET Core Web API project for the GoodReads backend.
+ASP.NET Core Web API for GoodReads, connected to Supabase (PostgREST) for persistence.
 
-## Purpose
+## Current status
 
-This project now starts from a clean API-first baseline (no WeatherForecast template code), so we can implement real domain features directly.
+- Health endpoint ready: `GET /api/health`
+- Books CRUD ready: `GET/POST/PUT/DELETE /api/books`
+- Book by slug ready: `GET /api/books/slug/{slug}`
 
-## Current structure
+## Layers
 
 ```text
 GoodReadsAPI.Server/
@@ -15,26 +17,41 @@ GoodReadsAPI.Server/
   Domain/
   Application/
   Infrastructure/
-  Properties/
-  Program.cs
+  Configuration/
 ```
 
-## Running locally
+## Supabase setup
+
+1. Run SQL bootstrap script:
+   - `docs/codex/supabase/001_books.sql`
+2. Configure secrets:
+
+```json
+"Supabase": {
+  "Url": "https://your-project-ref.supabase.co",
+  "ServiceRoleKey": "<service-role-key>",
+  "Schema": "public",
+  "BooksTable": "books"
+}
+```
+
+Recommended: keep `ServiceRoleKey` in user-secrets or environment variables.
+
+Example with user-secrets:
+
+```bash
+dotnet user-secrets set "Supabase:Url" "https://your-project-ref.supabase.co" --project GoodReadsAPI.Server
+dotnet user-secrets set "Supabase:ServiceRoleKey" "<service-role-key>" --project GoodReadsAPI.Server
+```
+
+## Run locally
 
 ```bash
 dotnet restore
 dotnet run
 ```
 
-Health endpoint:
+## Continuous codex docs
 
-```text
-GET /api/health
-```
-
-## Implementation order recommendation
-
-1. Define domain entities and value objects under `Domain`.
-2. Add use cases/services under `Application`.
-3. Implement persistence and external adapters under `Infrastructure`.
-4. Keep controllers thin and contract driven (`Contracts`).
+- `docs/codex/WORKLOG.md`
+- `docs/codex/BUILD_LOG.md`

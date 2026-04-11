@@ -1,4 +1,11 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using GoodReadsAPI.Server.Application.Interfaces;
+using GoodReadsAPI.Server.Application.Services;
+using GoodReadsAPI.Server.Configuration;
+using GoodReadsAPI.Server.Infrastructure.Repositories;
+using GoodReadsAPI.Server.Infrastructure.Supabase;
+using Microsoft.Extensions.Options;
+
+var builder = WebApplication.CreateBuilder(args);
 
 const string FrontendDevCorsPolicy = "FrontendDevCors";
 
@@ -25,6 +32,21 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
+builder.Services.Configure<SupabaseOptions>(
+    builder.Configuration.GetSection(SupabaseOptions.SectionName));
+builder.Services.AddHttpClient<ISupabaseRestClient, SupabaseRestClient>((serviceProvider, client) =>
+{
+    var options = serviceProvider
+        .GetRequiredService<IOptions<SupabaseOptions>>()
+        .Value;
+
+    if (!string.IsNullOrWhiteSpace(options.Url))
+    {
+        client.BaseAddress = new Uri($"{options.Url.TrimEnd('/')}/rest/v1/");
+    }
+});
+builder.Services.AddScoped<IBookRepository, SupabaseBookRepository>();
+builder.Services.AddScoped<IBookService, BookService>();
 
 var app = builder.Build();
 

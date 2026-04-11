@@ -53,6 +53,7 @@ GET /api/health
 ## Useful docs
 
 - `docs/ARCHITECTURE.md`
+- `docs/codex/README.md`
 - `goodreadsapi.client/README.md`
 - `goodreadsapi.client/BACKEND_HANDOFF.md`
 - `GoodReadsAPI.Server/README.md`

@@ -49,6 +49,12 @@ builder.Services.AddHttpClient<ISupabaseRestClient, SupabaseRestClient>((service
 });
 builder.Services.AddScoped<IBookRepository, SupabaseBookRepository>();
 builder.Services.AddScoped<IBookService, BookService>();
+builder.Services.AddScoped<IUserRepository, SupabaseUserRepository>();
+builder.Services.AddScoped<IUserRelationshipRepository, SupabaseUserRelationshipRepository>();
+builder.Services.AddScoped<IUserLibraryRepository, SupabaseUserLibraryRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ISocialGraphService, SocialGraphService>();
+builder.Services.AddScoped<IUserLibraryService, UserLibraryService>();
 
 var app = builder.Build();
 

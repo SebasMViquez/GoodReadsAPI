@@ -35,3 +35,8 @@ The migration strategy is to keep UI and contexts stable while replacing adapter
 - Frontend and backend are decoupled for development speed.
 - CI validates each app independently.
 - Integration happens through HTTP contracts, not direct project coupling.
+
+## Analysis references
+
+- Frontend flow audit: `docs/FRONTEND_FLOW_AUDIT.md`
+- Backend endpoint matrix: `docs/BACKEND_ENDPOINT_MATRIX.md`

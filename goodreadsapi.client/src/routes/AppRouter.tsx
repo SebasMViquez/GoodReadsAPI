@@ -21,6 +21,7 @@ const LibraryPage = lazy(() => import('@/pages/LibraryPage').then((module) => ({
 const MessagesPage = lazy(() => import('@/pages/MessagesPage').then((module) => ({ default: module.MessagesPage })));
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage').then((module) => ({ default: module.NotificationsPage })));
 const SettingsPage = lazy(() => import('@/pages/SettingsPage').then((module) => ({ default: module.SettingsPage })));
+const BooksLabPage = lazy(() => import('@/pages/BooksLabPage').then((module) => ({ default: module.BooksLabPage })));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
 
 function RouteFallback() {
@@ -104,6 +105,16 @@ function AnimatedRoutes() {
                   </PageTransition>
                 }
               />
+              {import.meta.env.DEV ? (
+                <Route
+                  path="/dev/books-lab"
+                  element={
+                    <PageTransition>
+                      <BooksLabPage />
+                    </PageTransition>
+                  }
+                />
+              ) : null}
               <Route
                 path="/login"
                 element={

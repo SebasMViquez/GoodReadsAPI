@@ -12,6 +12,14 @@ public sealed class SupabaseOptions
 
     public string BooksTable { get; init; } = "books";
 
+    public string UsersTable { get; init; } = "users";
+
+    public string UserFollowsTable { get; init; } = "user_follows";
+
+    public string FollowRequestsTable { get; init; } = "follow_requests";
+
+    public string UserBookLibraryTable { get; init; } = "user_book_library";
+
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(Url) &&
         !string.IsNullOrWhiteSpace(ServiceRoleKey);

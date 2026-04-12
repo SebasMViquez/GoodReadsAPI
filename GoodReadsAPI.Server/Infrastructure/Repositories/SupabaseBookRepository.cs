@@ -23,6 +23,35 @@ public sealed class SupabaseBookRepository(
         return rows.Select(ToDomain).ToArray();
     }
 
+    public async Task<IReadOnlyCollection<Book>> GetByIdsAsync(
+        IReadOnlyCollection<string> ids,
+        CancellationToken cancellationToken)
+    {
+        if (ids.Count == 0)
+        {
+            return [];
+        }
+
+        var idFilter = string.Join(
+            ',',
+            ids
+                .Where(id => !string.IsNullOrWhiteSpace(id))
+                .Distinct(StringComparer.Ordinal)
+                .Select(Uri.EscapeDataString));
+
+        if (string.IsNullOrWhiteSpace(idFilter))
+        {
+            return [];
+        }
+
+        var rows = await supabase.GetManyAsync<BookRow>(
+            _options.BooksTable,
+            $"id=in.({idFilter})",
+            cancellationToken);
+
+        return rows.Select(ToDomain).ToArray();
+    }
+
     public async Task<Book?> GetByIdAsync(string id, CancellationToken cancellationToken)
     {
         var row = await supabase.GetSingleAsync<BookRow>(

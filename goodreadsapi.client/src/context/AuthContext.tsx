@@ -1,14 +1,15 @@
-import {
+﻿import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from 'react';
 import { useToast } from '@/context/ToastContext';
-import { authClient } from '@/services/api/authClient';
+import { authClient, type RemoteUserProfile } from '@/services/api/authClient';
 import type { AuthState } from '@/services/api/mock/authState';
 import {
   clearIdentifiedUser,
@@ -156,12 +157,74 @@ const updateUserActivity = (
           ...user,
           activity: updater(user.activity),
         }
-      : user,
+        : user,
   );
+
+const mergeRemoteUserWithLocal = (remoteUser: RemoteUserProfile, localUser?: User): User => ({
+  id: remoteUser.id,
+  name: remoteUser.name,
+  username: remoteUser.username,
+  email: remoteUser.email,
+  avatar: remoteUser.avatar,
+  banner: remoteUser.banner,
+  role: remoteUser.role,
+  bio: remoteUser.bio,
+  location: remoteUser.location,
+  website: remoteUser.website,
+  profileVisibility: remoteUser.profileVisibility,
+  followersCount: remoteUser.followersCount,
+  followingCount: remoteUser.followingCount,
+  booksRead: remoteUser.booksRead,
+  pagesRead: remoteUser.pagesRead,
+  streak: remoteUser.streak,
+  favoriteGenres: remoteUser.favoriteGenres,
+  badges: remoteUser.badges,
+  wantToRead: localUser?.wantToRead ?? [],
+  currentlyReading: localUser?.currentlyReading ?? [],
+  read: localUser?.read ?? [],
+  favoriteBooks: localUser?.favoriteBooks ?? [],
+  featuredReviews: localUser?.featuredReviews ?? [],
+  activity: localUser?.activity ?? [],
+});
+
+const mergeRemoteUsers = (currentUsers: User[], remoteUsers: RemoteUserProfile[]): User[] => {
+  const localById = new Map(currentUsers.map((user) => [user.id, user]));
+  const remoteIds = new Set(remoteUsers.map((user) => user.id));
+
+  const mergedRemoteUsers = remoteUsers.map((remoteUser) =>
+    mergeRemoteUserWithLocal(remoteUser, localById.get(remoteUser.id)),
+  );
+
+  const localOnlyUsers = currentUsers.filter((user) => !remoteIds.has(user.id));
+
+  return [...mergedRemoteUsers, ...localOnlyUsers];
+};
+
+const mergeIncomingPendingRequests = (
+  existingRequests: FollowRequest[],
+  currentUserId: string,
+  incomingPendingRequests: FollowRequest[],
+) => {
+  const incomingIds = new Set(incomingPendingRequests.map((request) => request.id));
+  const preservedRequests = existingRequests.filter((request) => {
+    if (incomingIds.has(request.id)) {
+      return false;
+    }
+
+    if (request.targetUserId === currentUserId && request.status === 'pending') {
+      return false;
+    }
+
+    return true;
+  });
+
+  return [...incomingPendingRequests, ...preservedRequests];
+};
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const { showToast } = useToast();
   const [state, setState] = useState<AuthState>(authClient.createInitialState);
+  const stateRef = useRef(state);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [bootstrapVersion, setBootstrapVersion] = useState(0);
@@ -169,6 +232,72 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => state.users.find((user) => user.id === authClient.resolveCurrentUserId(state)) ?? null,
     [state],
   );
+  const currentUserId = currentUser?.id ?? null;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const buildBackendSyncedState = useCallback(
+    async (baseState: AuthState): Promise<AuthState> => {
+      if (!authClient.isBackendEnabled()) {
+        return baseState;
+      }
+
+      const remoteUsers = await authClient.fetchUsers();
+      const mergedUsers = mergeRemoteUsers(baseState.users, remoteUsers);
+      const followingEntries = await Promise.all(
+        remoteUsers.map(async (user) => {
+          try {
+            return {
+              userId: user.id,
+              followingUserIds: await authClient.fetchFollowingUserIds(user.id),
+            };
+          } catch {
+            return {
+              userId: user.id,
+              followingUserIds: baseState.followingByUser[user.id] ?? [],
+            };
+          }
+        }),
+      );
+
+      const followingByUser = { ...baseState.followingByUser };
+      followingEntries.forEach(({ userId, followingUserIds }) => {
+        followingByUser[userId] = followingUserIds;
+      });
+
+      const currentUserId = authClient.resolveCurrentUserId(baseState);
+      const followRequests = currentUserId
+        ? mergeIncomingPendingRequests(
+            baseState.followRequests,
+            currentUserId,
+            await authClient.fetchPendingFollowRequests(currentUserId).catch(() => []),
+          )
+        : baseState.followRequests;
+
+      return {
+        ...baseState,
+        users: mergedUsers,
+        followingByUser,
+        followRequests,
+      };
+    },
+    [],
+  );
+
+  const refreshBackendSocialState = useCallback(async () => {
+    if (!authClient.isBackendEnabled()) {
+      return;
+    }
+
+    try {
+      const nextState = await buildBackendSyncedState(stateRef.current);
+      setState(nextState);
+    } catch (caughtError) {
+      reportError(caughtError, { scope: 'auth.remoteSync' });
+    }
+  }, [buildBackendSyncedState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,7 +307,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setError(null);
 
       try {
-        const nextState = await authClient.hydrate();
+        let nextState = await authClient.hydrate();
+
+        if (authClient.isBackendEnabled()) {
+          try {
+            nextState = await buildBackendSyncedState(nextState);
+          } catch (remoteSyncError) {
+            reportError(remoteSyncError, { scope: 'auth.hydrate.remoteSync' });
+          }
+        }
 
         if (cancelled) {
           return;
@@ -202,7 +339,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [bootstrapVersion]);
+  }, [bootstrapVersion, buildBackendSyncedState]);
 
   useEffect(() => {
     if (status !== 'ready') {
@@ -228,6 +365,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       username: currentUser.username,
     });
   }, [currentUser]);
+
+  useEffect(() => {
+    if (status !== 'ready' || !currentUserId || !authClient.isBackendEnabled()) {
+      return;
+    }
+
+    void refreshBackendSocialState();
+  }, [currentUserId, refreshBackendSocialState, status]);
 
   const retry = useCallback(() => {
     setBootstrapVersion((currentValue) => currentValue + 1);
@@ -603,6 +748,85 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       const alreadyFollowing = (state.followingByUser[currentUser.id] ?? []).includes(targetUserId);
 
+      if (authClient.isBackendEnabled()) {
+        void (async () => {
+          try {
+            if (alreadyFollowing) {
+              const unfollowed = await authClient.unfollowUser(currentUser.id, targetUserId);
+
+              if (!unfollowed) {
+                return;
+              }
+
+              showToast(
+                {
+                  en: `You stopped following ${targetUser.name}.`,
+                  es: `Dejaste de seguir a ${targetUser.name}.`,
+                },
+                'info',
+              );
+
+              await refreshBackendSocialState();
+              return;
+            }
+
+            const result = await authClient.followUser(currentUser.id, targetUserId);
+
+            if (result.outcome === 'requested' && result.followRequest) {
+              const pendingRequest = result.followRequest;
+              setState((currentState) => ({
+                ...currentState,
+                followRequests: [
+                  pendingRequest,
+                  ...currentState.followRequests.filter(
+                    (request) => request.id !== pendingRequest.id,
+                  ),
+                ],
+              }));
+
+              showToast(
+                {
+                  en: 'Follow request sent.',
+                  es: 'Solicitud de seguimiento enviada.',
+                },
+                'info',
+              );
+
+              await refreshBackendSocialState();
+              return;
+            }
+
+            if (result.outcome === 'request-already-pending') {
+              return;
+            }
+
+            if (result.outcome === 'followed' || result.outcome === 'already-following') {
+              trackEvent('follow_started', { targetUserId, userId: currentUser.id });
+              showToast(
+                {
+                  en: `You are now following ${targetUser.name}.`,
+                  es: `Ahora sigues a ${targetUser.name}.`,
+                },
+                'success',
+              );
+
+              await refreshBackendSocialState();
+            }
+          } catch (caughtError) {
+            reportError(caughtError, { scope: 'social.follow', targetUserId, userId: currentUser.id });
+            showToast(
+              {
+                en: 'Could not update follow state right now.',
+                es: 'No se pudo actualizar el seguimiento en este momento.',
+              },
+              'warning',
+            );
+          }
+        })();
+
+        return;
+      }
+
       if (alreadyFollowing) {
         setState((currentState) => ({
           ...currentState,
@@ -700,7 +924,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
         'success',
       );
     },
-    [currentUser, getUserById, hasPendingFollowRequest, showToast, state.followingByUser],
+    [
+      currentUser,
+      getUserById,
+      hasPendingFollowRequest,
+      refreshBackendSocialState,
+      showToast,
+      state.followingByUser,
+    ],
   );
 
   const respondToFollowRequest = useCallback(
@@ -712,6 +943,65 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const request = state.followRequests.find((candidate) => candidate.id === requestId);
 
       if (!request || request.targetUserId !== currentUser.id || request.status !== 'pending') {
+        return;
+      }
+
+      if (authClient.isBackendEnabled()) {
+        void (async () => {
+          try {
+            const updatedRequest = await authClient.respondToFollowRequest(currentUser.id, requestId, status);
+            if (!updatedRequest) {
+              return;
+            }
+
+            setState((currentState) => ({
+              ...currentState,
+              followRequests: currentState.followRequests.map((candidate) =>
+                candidate.id === requestId ? updatedRequest : candidate,
+              ),
+              notifications:
+                status === 'accepted'
+                  ? [
+                      {
+                        id: createId('notification'),
+                        userId: request.requesterId,
+                        type: 'request-approved',
+                        actorUserId: currentUser.id,
+                        requestId,
+                        createdAt: new Date().toISOString(),
+                        read: false,
+                      },
+                      ...currentState.notifications,
+                    ]
+                  : currentState.notifications,
+            }));
+
+            await refreshBackendSocialState();
+
+            showToast(
+              status === 'accepted'
+                ? {
+                    en: 'Follow request accepted.',
+                    es: 'Solicitud aceptada.',
+                  }
+                : {
+                    en: 'Follow request declined.',
+                    es: 'Solicitud rechazada.',
+                  },
+              status === 'accepted' ? 'success' : 'info',
+            );
+          } catch (caughtError) {
+            reportError(caughtError, { scope: 'social.followRequest.respond', requestId, status });
+            showToast(
+              {
+                en: 'Could not respond to the follow request.',
+                es: 'No se pudo responder la solicitud de seguimiento.',
+              },
+              'warning',
+            );
+          }
+        })();
+
         return;
       }
 
@@ -767,7 +1057,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         status === 'accepted' ? 'success' : 'info',
       );
     },
-    [currentUser, showToast, state.followRequests],
+    [currentUser, refreshBackendSocialState, showToast, state.followRequests],
   );
 
   const createReview = useCallback(
@@ -1275,3 +1565,4 @@ export const useAuth = () => {
 
   return context;
 };
+

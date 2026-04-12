@@ -1,14 +1,38 @@
-import type { Locale, ReadingProgress, ShelfStatus } from '@/types';
+import type { Book, Locale, ReadingProgress, ShelfStatus } from '@/types';
 import { authors as seededAuthors } from '@/data/authors';
 import { books as seededBooks } from '@/data/books';
 import { reviews as seededReviews, testimonials as seededTestimonials } from '@/data/reviews';
 import { users as seededUsers } from '@/data/users';
+import { buildApiUrl, isBackendApiEnabled, useMockApi } from '@/services/api/http';
 
-export const authors = seededAuthors;
-export const books = seededBooks;
-export const reviews = seededReviews;
-export const testimonials = seededTestimonials;
-export const users = seededUsers;
+export const authors = [...seededAuthors];
+export const books = [...seededBooks];
+export const reviews = [...seededReviews];
+export const testimonials = [...seededTestimonials];
+export const users = [...seededUsers];
+
+export const featuredBooks: Book[] = [];
+export const trendingBooks: Book[] = [];
+export const editorPicks: Book[] = [];
+export const featuredReviews = [];
+export const topReviewers = users.slice(0, 4);
+export const genreLabels: string[] = [];
+
+const replaceCollection = <T>(target: T[], next: T[]) => {
+  target.splice(0, target.length, ...next);
+};
+
+const recomputeCatalogViews = () => {
+  replaceCollection(featuredBooks, books.filter((book) => book.featured));
+  replaceCollection(trendingBooks, books.filter((book) => book.trending));
+  replaceCollection(editorPicks, books.filter((book) => book.editorPick));
+  replaceCollection(featuredReviews, reviews.filter((review) => review.featured));
+
+  const labels = Array.from(new Set(books.flatMap((book) => book.genres))).sort();
+  replaceCollection(genreLabels, labels);
+};
+
+recomputeCatalogViews();
 
 export const getAuthorById = (authorId: string) =>
   authors.find((author) => author.id === authorId);
@@ -63,15 +87,34 @@ export const getRelatedBooks = (bookId: string, limit = 4) => {
     .slice(0, limit);
 };
 
-export const featuredBooks = books.filter((book) => book.featured);
-export const trendingBooks = books.filter((book) => book.trending);
-export const editorPicks = books.filter((book) => book.editorPick);
-export const featuredReviews = reviews.filter((review) => review.featured);
-export const topReviewers = users.slice(0, 4);
+export const hydrateCatalogFromApi = async () => {
+  if (useMockApi) {
+    return { count: books.length, reason: 'VITE_USE_MOCK_API=true', source: 'seed' as const };
+  }
 
-export const genreLabels = Array.from(
-  new Set(books.flatMap((book) => book.genres)),
-).sort();
+  if (!isBackendApiEnabled()) {
+    return { count: books.length, reason: 'VITE_API_BASE_URL is not set', source: 'seed' as const };
+  }
+
+  const response = await fetch(buildApiUrl('/api/books'), {
+    headers: { Accept: 'application/json' },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Catalog request failed with status ${response.status}`);
+  }
+
+  const payload = (await response.json()) as Book[];
+
+  if (!Array.isArray(payload)) {
+    throw new Error('Catalog response payload is invalid.');
+  }
+
+  replaceCollection(books, payload);
+  recomputeCatalogViews();
+
+  return { count: books.length, source: 'remote' as const };
+};
 
 export const getShelfLabel = (shelf: ShelfStatus, locale: Locale = 'en') => {
   const labels: Record<ShelfStatus, Record<Locale, string>> = {

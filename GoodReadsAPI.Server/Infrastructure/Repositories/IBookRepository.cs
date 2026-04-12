@@ -6,6 +6,10 @@ public interface IBookRepository
 {
     Task<IReadOnlyCollection<Book>> GetAllAsync(CancellationToken cancellationToken);
 
+    Task<IReadOnlyCollection<Book>> GetByIdsAsync(
+        IReadOnlyCollection<string> ids,
+        CancellationToken cancellationToken);
+
     Task<Book?> GetByIdAsync(string id, CancellationToken cancellationToken);
 
     Task<Book?> GetBySlugAsync(string slug, CancellationToken cancellationToken);

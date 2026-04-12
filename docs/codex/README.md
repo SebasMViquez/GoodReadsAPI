@@ -6,7 +6,10 @@ This folder is the permanent engineering log generated during collaboration with
 
 - `WORKLOG.md`: every feature, fix, and structural change.
 - `BUILD_LOG.md`: every compilation/test run and its result.
-- `supabase/`: SQL and setup material for Supabase.
+
+## Technical assets location
+
+- Supabase SQL scripts live under backend code: `GoodReadsAPI.Server/Database/Sql/`
 
 ## Logging rule
 

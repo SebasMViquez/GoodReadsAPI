@@ -27,7 +27,8 @@ Este documento define lo necesario para poner login real con Supabase y alinear 
 1. `GoodReadsAPI.Server/Database/Sql/001_books.sql`
 2. `GoodReadsAPI.Server/Database/Sql/002_social_core.sql`
 3. `GoodReadsAPI.Server/Database/Sql/005_supabase_auth_alignment.sql`
-4. Opcional: seeds `003` y `004`.
+4. `GoodReadsAPI.Server/Database/Sql/006_default_avatar_placeholder.sql`
+5. Opcional: seeds `003` y `004`.
 
 ### Que hace `005_supabase_auth_alignment.sql`
 
@@ -37,6 +38,11 @@ Este documento define lo necesario para poner login real con Supabase y alinear 
 - Trigger `auth.users -> public.users` para crear/sincronizar perfil app.
 - Trigger para sincronizar cambios de email.
 - Helper `public.current_app_user_id()` para politicas RLS futuras.
+
+### Que hace `006_default_avatar_placeholder.sql`
+
+- Reemplaza avatares heredados del default anterior por un placeholder neutral.
+- Actualiza el trigger `handle_new_auth_user()` para que cuentas nuevas usen placeholder neutral en `avatar`.
 
 ## 3) Backend (.NET)
 

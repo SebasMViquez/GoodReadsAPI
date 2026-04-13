@@ -63,7 +63,7 @@ select
     'reader'
   ) || '-' || left(a.id::text, 8) as username,
   coalesce(a.email, '') as email,
-  'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80' as avatar,
+  'https://api.dicebear.com/9.x/shapes/svg?seed=goodreads-reader' as avatar,
   'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80' as banner,
   jsonb_build_object('en', '', 'es', '') as role,
   jsonb_build_object('en', '', 'es', '') as bio,
@@ -181,7 +181,7 @@ begin
     candidate_name,
     resolved_username,
     coalesce(new.email, ''),
-    'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80',
+    'https://api.dicebear.com/9.x/shapes/svg?seed=goodreads-reader',
     'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80',
     jsonb_build_object('en', '', 'es', ''),
     jsonb_build_object('en', '', 'es', ''),

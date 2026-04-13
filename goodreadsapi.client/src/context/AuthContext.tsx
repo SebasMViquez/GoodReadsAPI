@@ -130,6 +130,10 @@ const sanitizeHandle = (value: string) =>
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9_-]/g, '');
+const DEFAULT_AVATAR_PLACEHOLDER =
+  'https://api.dicebear.com/9.x/shapes/svg?seed=goodreads-reader';
+const DEFAULT_BANNER_PLACEHOLDER =
+  'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80';
 
 const createFallbackSessionUser = (
   userId: string,
@@ -149,10 +153,8 @@ const createFallbackSessionUser = (
     name,
     username,
     email,
-    avatar:
-      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80',
-    banner:
-      'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80',
+    avatar: DEFAULT_AVATAR_PLACEHOLDER,
+    banner: DEFAULT_BANNER_PLACEHOLDER,
     role: {
       en: '',
       es: '',
@@ -824,10 +826,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         name: name.trim(),
         username: normalizedNewUsername,
         email: normalizedNewEmail,
-        avatar:
-          'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80',
-        banner:
-          'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80',
+        avatar: DEFAULT_AVATAR_PLACEHOLDER,
+        banner: DEFAULT_BANNER_PLACEHOLDER,
         role: {
           en: 'New reader',
           es: 'Nuevo lector',

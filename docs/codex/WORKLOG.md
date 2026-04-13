@@ -522,3 +522,24 @@
 ### Notes
 
 - This provides a direct sign-out path from global navigation without requiring entry to Settings.
+
+## 2026-04-12 (Neutral default avatar for new users)
+
+### Changed
+
+- `goodreadsapi.client/src/context/AuthContext.tsx`
+  - Replaced hardcoded portrait avatar fallback with neutral placeholder avatar URL.
+  - Applied same neutral placeholder in local/mock register flow for newly created users.
+- `GoodReadsAPI.Server/Database/Sql/005_supabase_auth_alignment.sql`
+  - Updated default `avatar` for auth-alignment inserts and auth trigger user creation.
+- `GoodReadsAPI.Server/Database/Sql/006_default_avatar_placeholder.sql`
+  - Added migration to update existing users still using old default portrait avatar.
+  - Recreates `handle_new_auth_user()` so future auth-created users use neutral placeholder.
+- `GoodReadsAPI.Server/README.md`
+  - Added `006_default_avatar_placeholder.sql` to SQL run order.
+- `docs/AUTH_SUPABASE_MIGRATION.md`
+  - Added `006_default_avatar_placeholder.sql` and explained what it does.
+
+### Notes
+
+- Goal: avoid assigning a gendered portrait to users who have not uploaded an avatar yet.

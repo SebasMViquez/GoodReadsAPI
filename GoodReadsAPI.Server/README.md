@@ -45,6 +45,7 @@ GoodReadsAPI.Server/
    - `GoodReadsAPI.Server/Database/Sql/001_books.sql`
    - `GoodReadsAPI.Server/Database/Sql/002_social_core.sql`
    - `GoodReadsAPI.Server/Database/Sql/005_supabase_auth_alignment.sql` (auth/users alignment)
+   - `GoodReadsAPI.Server/Database/Sql/006_default_avatar_placeholder.sql` (neutral default avatar)
 2. Optional catalog seed (bulk, SQL editor):
    - `GoodReadsAPI.Server/Database/Sql/003_authors_bulk_seed.sql`
    - `GoodReadsAPI.Server/Database/Sql/004_books_bulk_seed.sql`

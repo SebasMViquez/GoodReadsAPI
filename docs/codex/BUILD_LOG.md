@@ -313,3 +313,339 @@
   - Success
 - Output summary:
   - TypeScript build completed with no errors after context type corrections.
+
+## 2026-04-12 - Auth hardening validation (hybrid auth + [Authorize])
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-auth-cutover`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-auth-cutover`.
+
+### Attempt 2
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 3
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Validation after Supabase local configuration binding
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-supabase-config`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-supabase-config`.
+
+### Attempt 2
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 3
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Frontend validation after Supabase "User already registered" handling
+
+### Attempt 1
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 2
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Frontend validation after signup-null-session fallback
+
+### Attempt 1
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 2
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Frontend validation after post-login hydration fix
+
+### Attempt 1
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Failed
+- Key errors:
+  - Unused `currentUser` variable in `LoginPage.tsx` and `RegisterPage.tsx` after redirect condition update.
+
+### Attempt 2
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 3
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Frontend validation after readers/profile backend-alignment fixes
+
+### Attempt 1
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 2
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Backend validation after auth-user sync SQL fix
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-auth-user-sync-fix`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-auth-user-sync-fix`.
+
+## 2026-04-12 - Backend validation after JWT app_user_id mapping
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-auth-app-id-claim`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-auth-app-id-claim`.
+
+## 2026-04-12 - Validation after profile DB persistence + follow hardening
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-profile-persist-follow-fix`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-profile-persist-follow-fix`.
+
+### Attempt 2
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 3
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Backend validation after profile 404 hotfix
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-profile-404-fix`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-profile-404-fix`.
+
+## 2026-04-12 - Backend validation after profile auto-provision fix
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-profile-autoprovision-fix`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-profile-autoprovision-fix`.
+
+## 2026-04-12 - Runtime backend refresh after stale endpoint detection
+
+### Attempt 1
+
+- Command:
+  - Stop running `GoodReadsAPI.Server` process.
+  - `dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore`
+  - Start fresh server: `dotnet run --project GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-build --urls http://localhost:5068`
+  - Verify swagger path contains `/api/me/profile`.
+- Result:
+  - Success
+- Output summary:
+  - Build succeeded (`0 warnings`, `0 errors`).
+  - New server process started.
+  - Swagger verification: `HAS_PROFILE_ENDPOINT=True`.
+
+## 2026-04-12 - Frontend validation after profile JSON parse hardening
+
+### Attempt 1
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 2
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Backend validation after profile-update Supabase 500 hardening
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-profile-supabase-500-fix`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-profile-supabase-500-fix`.
+
+## 2026-04-12 - Backend validation after PostgREST return-header hotfix
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-postgrest-return-header-fix`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-postgrest-return-header-fix`.
+
+## 2026-04-12 - Frontend validation after auth screen auto-redirect fix
+
+### Attempt 1
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 2
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Frontend validation after navbar/mobile logout action
+
+### Attempt 1
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 2
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.

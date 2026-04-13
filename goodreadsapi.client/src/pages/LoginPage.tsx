@@ -17,7 +17,7 @@ import { preferencesStore } from '@/services/storage/preferencesStore';
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { currentUser, isAuthenticated, login } = useAuth();
+  const { isAuthenticated, login } = useAuth();
   const { t } = useLanguage();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -28,12 +28,28 @@ export function LoginPage() {
 
   const trimmedIdentifier = identifier.trim();
   const canSubmit = Boolean(trimmedIdentifier) && password.length >= 6 && !isSubmitting;
+  const locationState = location.state as { from?: unknown } | null;
+  const stateRedirect = typeof locationState?.from === 'string' ? locationState.from : null;
+
+  const sanitizeRedirectTarget = (target: string | null, fallback: string): string => {
+    if (!target || !target.startsWith('/')) {
+      return fallback;
+    }
+
+    if (target === '/login' || target === '/register') {
+      return fallback;
+    }
+
+    return target;
+  };
+
+  const redirectTarget = sanitizeRedirectTarget(pendingRedirect ?? stateRedirect, '/library');
 
   useEffect(() => {
-    if (pendingRedirect && isAuthenticated && currentUser) {
-      navigate(pendingRedirect, { replace: true });
+    if (isAuthenticated) {
+      navigate(redirectTarget, { replace: true });
     }
-  }, [currentUser, isAuthenticated, navigate, pendingRedirect]);
+  }, [isAuthenticated, navigate, redirectTarget]);
 
   useEffect(() => {
     const savedIdentifier = preferencesStore.getLastLoginIdentifier();
@@ -77,7 +93,7 @@ export function LoginPage() {
     }
 
     preferencesStore.setLastLoginIdentifier(trimmedIdentifier);
-    setPendingRedirect(location.state?.from ?? '/library');
+    setPendingRedirect(redirectTarget);
   };
 
   return (

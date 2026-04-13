@@ -9,7 +9,7 @@ import {
   Mail,
   UserRound,
 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Reveal } from '@/components/common/Reveal';
 import { SectionHeader } from '@/components/common/SectionHeader';
 import { useAuth } from '@/context/AuthContext';
@@ -18,7 +18,8 @@ import { preferencesStore } from '@/services/storage/preferencesStore';
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { currentUser, isAuthenticated, isUsernameAvailable, register } = useAuth();
+  const location = useLocation();
+  const { isAuthenticated, isUsernameAvailable, register } = useAuth();
   const { t } = useLanguage();
   const [form, setForm] = useState({
     name: '',
@@ -29,7 +30,7 @@ export function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pendingRedirect, setPendingRedirect] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -70,12 +71,28 @@ export function RegisterPage() {
     form.password.length >= 6 &&
     form.password === confirmPassword &&
     !isSubmitting;
+  const locationState = location.state as { from?: unknown } | null;
+  const stateRedirect = typeof locationState?.from === 'string' ? locationState.from : null;
+
+  const sanitizeRedirectTarget = (target: string | null, fallback: string): string => {
+    if (!target || !target.startsWith('/')) {
+      return fallback;
+    }
+
+    if (target === '/login' || target === '/register') {
+      return fallback;
+    }
+
+    return target;
+  };
+
+  const redirectTarget = sanitizeRedirectTarget(pendingRedirect ?? stateRedirect, '/settings');
 
   useEffect(() => {
-    if (pendingRedirect && isAuthenticated && currentUser) {
-      navigate('/settings', { replace: true });
+    if (isAuthenticated) {
+      navigate(redirectTarget, { replace: true });
     }
-  }, [currentUser, isAuthenticated, navigate, pendingRedirect]);
+  }, [isAuthenticated, navigate, redirectTarget]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -156,7 +173,7 @@ export function RegisterPage() {
 
     preferencesStore.setLastLoginIdentifier(form.email.trim());
 
-    setPendingRedirect(true);
+    setPendingRedirect(redirectTarget);
   };
 
   return (

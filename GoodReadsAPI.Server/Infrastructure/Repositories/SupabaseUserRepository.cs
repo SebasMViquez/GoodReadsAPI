@@ -33,6 +33,21 @@ public sealed class SupabaseUserRepository(
         return row is null ? null : ToDomain(row);
     }
 
+    public async Task<User?> GetByAuthUserIdAsync(string authUserId, CancellationToken cancellationToken)
+    {
+        if (!Guid.TryParse(authUserId, out var parsedAuthUserId))
+        {
+            return null;
+        }
+
+        var row = await supabase.GetSingleAsync<UserRow>(
+            _options.UsersTable,
+            $"auth_user_id=eq.{Uri.EscapeDataString(parsedAuthUserId.ToString())}",
+            cancellationToken);
+
+        return row is null ? null : ToDomain(row);
+    }
+
     public async Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken)
     {
         var normalized = username.Trim();
@@ -43,6 +58,101 @@ public sealed class SupabaseUserRepository(
             cancellationToken);
 
         return row is null ? null : ToDomain(row);
+    }
+
+    public async Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
+    {
+        var normalized = email.Trim().ToLowerInvariant();
+
+        var row = await supabase.GetSingleAsync<UserRow>(
+            _options.UsersTable,
+            $"email=eq.{Uri.EscapeDataString(normalized)}",
+            cancellationToken);
+
+        return row is null ? null : ToDomain(row);
+    }
+
+    public async Task<User?> UpdateProfileAsync(
+        string userId,
+        UserProfileUpdate update,
+        CancellationToken cancellationToken)
+    {
+        var row = await supabase.UpdateSingleAsync<UserRow>(
+            _options.UsersTable,
+            $"id=eq.{Uri.EscapeDataString(userId)}",
+            new
+            {
+                name = update.Name,
+                username = update.Username,
+                email = update.Email,
+                avatar = update.Avatar,
+                banner = update.Banner,
+                role = new
+                {
+                    en = update.Role.En,
+                    es = update.Role.Es,
+                },
+                bio = new
+                {
+                    en = update.Bio.En,
+                    es = update.Bio.Es,
+                },
+                location = update.Location,
+                website = update.Website,
+                profile_visibility = update.ProfileVisibility,
+            },
+            cancellationToken);
+
+        return row is null ? null : ToDomain(row);
+    }
+
+    public async Task<User> CreateProfileAsync(
+        string userId,
+        string? authUserId,
+        UserProfileUpdate profile,
+        CancellationToken cancellationToken)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["id"] = userId,
+            ["name"] = profile.Name,
+            ["username"] = profile.Username,
+            ["email"] = profile.Email,
+            ["avatar"] = profile.Avatar,
+            ["banner"] = profile.Banner,
+            ["role"] = new
+            {
+                en = profile.Role.En,
+                es = profile.Role.Es,
+            },
+            ["bio"] = new
+            {
+                en = profile.Bio.En,
+                es = profile.Bio.Es,
+            },
+            ["location"] = profile.Location,
+            ["website"] = profile.Website,
+            ["profile_visibility"] = profile.ProfileVisibility,
+            ["followers_count"] = 0,
+            ["following_count"] = 0,
+            ["books_read"] = 0,
+            ["pages_read"] = new { en = string.Empty, es = string.Empty },
+            ["streak"] = 0,
+            ["favorite_genres"] = Array.Empty<string>(),
+            ["badges"] = Array.Empty<object>(),
+        };
+
+        if (!string.IsNullOrWhiteSpace(authUserId) && Guid.TryParse(authUserId, out var parsedAuthId))
+        {
+            payload["auth_user_id"] = parsedAuthId;
+        }
+
+        var row = await supabase.InsertAsync<UserRow>(
+            _options.UsersTable,
+            payload,
+            cancellationToken);
+
+        return ToDomain(row);
     }
 
     public async Task<IReadOnlyCollection<User>> GetByIdsAsync(

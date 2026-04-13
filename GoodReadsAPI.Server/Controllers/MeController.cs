@@ -1,16 +1,92 @@
 using GoodReadsAPI.Server.Application.Interfaces;
 using GoodReadsAPI.Server.Contracts;
+using GoodReadsAPI.Server.Infrastructure.Supabase;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GoodReadsAPI.Server.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/me")]
 public sealed class MeController(
     ISocialGraphService socialGraphService,
-    IUserLibraryService userLibraryService)
+    IUserLibraryService userLibraryService,
+    IUserService userService)
     : ControllerBase
 {
+    [HttpPut("profile")]
+    [ProducesResponseType(typeof(UserResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserResponse>> UpdateProfile(
+        [FromBody] UpdateMyProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!this.TryResolveCurrentUserId(out var currentUserId))
+        {
+            return Problem(
+                title: "Missing current user context",
+                detail: "Provide a valid authenticated user.",
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        try
+        {
+            var updated = await userService.UpdateProfileAsync(
+                currentUserId,
+                request.Locale,
+                request.Name,
+                request.Username,
+                request.Email,
+                request.Avatar,
+                request.Banner,
+                request.Role,
+                request.Bio,
+                request.Location,
+                request.Website,
+                request.ProfileVisibility,
+                cancellationToken);
+
+            if (updated is null)
+            {
+                return NotFound();
+            }
+
+            return Ok(UserResponse.FromDomain(updated));
+        }
+        catch (ArgumentException ex)
+        {
+            return Problem(
+                title: "Invalid profile payload",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Problem(
+                title: "Profile update conflict",
+                detail: ex.Message,
+                statusCode: StatusCodes.Status409Conflict);
+        }
+        catch (SupabaseRequestException ex)
+        {
+            var statusCode = ex.StatusCode switch
+            {
+                System.Net.HttpStatusCode.Conflict => StatusCodes.Status409Conflict,
+                System.Net.HttpStatusCode.NotFound => StatusCodes.Status404NotFound,
+                System.Net.HttpStatusCode.Unauthorized => StatusCodes.Status401Unauthorized,
+                System.Net.HttpStatusCode.Forbidden => StatusCodes.Status403Forbidden,
+                _ => StatusCodes.Status400BadRequest,
+            };
+
+            return Problem(
+                title: "Profile update backend error",
+                detail: BuildSupabaseDetail(ex),
+                statusCode: statusCode);
+        }
+    }
+
     [HttpGet("follow-requests")]
     [ProducesResponseType(typeof(IReadOnlyCollection<FollowRequestResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
@@ -205,5 +281,16 @@ public sealed class MeController(
         }
 
         return Ok(FollowRequestResponse.FromDomain(updated));
+    }
+
+    private static string BuildSupabaseDetail(SupabaseRequestException exception)
+    {
+        if (string.IsNullOrWhiteSpace(exception.Details))
+        {
+            return exception.Message;
+        }
+
+        var compact = exception.Details.Trim().ReplaceLineEndings(" ");
+        return compact.Length > 600 ? compact[..600] : compact;
     }
 }

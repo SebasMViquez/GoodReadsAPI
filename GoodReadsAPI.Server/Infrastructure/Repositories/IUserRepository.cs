@@ -8,7 +8,22 @@ public interface IUserRepository
 
     Task<User?> GetByIdAsync(string id, CancellationToken cancellationToken);
 
+    Task<User?> GetByAuthUserIdAsync(string authUserId, CancellationToken cancellationToken);
+
     Task<User?> GetByUsernameAsync(string username, CancellationToken cancellationToken);
+
+    Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken);
+
+    Task<User?> UpdateProfileAsync(
+        string userId,
+        UserProfileUpdate update,
+        CancellationToken cancellationToken);
+
+    Task<User> CreateProfileAsync(
+        string userId,
+        string? authUserId,
+        UserProfileUpdate profile,
+        CancellationToken cancellationToken);
 
     Task<IReadOnlyCollection<User>> GetByIdsAsync(
         IReadOnlyCollection<string> ids,

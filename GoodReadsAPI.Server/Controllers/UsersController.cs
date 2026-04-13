@@ -1,6 +1,8 @@
 using GoodReadsAPI.Server.Application.Interfaces;
 using GoodReadsAPI.Server.Contracts;
 using GoodReadsAPI.Server.Domain.Entities;
+using GoodReadsAPI.Server.Infrastructure.Supabase;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GoodReadsAPI.Server.Controllers;
@@ -60,6 +62,7 @@ public sealed class UsersController(
     }
 
     [HttpPost("{targetUserId}/follow")]
+    [Authorize]
     [ProducesResponseType(typeof(FollowOperationResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -75,7 +78,18 @@ public sealed class UsersController(
                 statusCode: StatusCodes.Status400BadRequest);
         }
 
-        var result = await socialGraphService.FollowAsync(currentUserId, targetUserId, cancellationToken);
+        FollowOperationResult result;
+        try
+        {
+            result = await socialGraphService.FollowAsync(currentUserId, targetUserId, cancellationToken);
+        }
+        catch (SupabaseRequestException ex)
+        {
+            return Problem(
+                title: "Follow request failed",
+                detail: ex.Details ?? ex.Message,
+                statusCode: StatusCodes.Status400BadRequest);
+        }
 
         if (result.Outcome is FollowOperationOutcomes.CurrentUserNotFound or FollowOperationOutcomes.TargetUserNotFound)
         {
@@ -94,6 +108,7 @@ public sealed class UsersController(
     }
 
     [HttpDelete("{targetUserId}/follow")]
+    [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -117,7 +132,19 @@ public sealed class UsersController(
                 statusCode: StatusCodes.Status400BadRequest);
         }
 
-        var deleted = await socialGraphService.UnfollowAsync(currentUserId, targetUserId, cancellationToken);
+        bool deleted;
+        try
+        {
+            deleted = await socialGraphService.UnfollowAsync(currentUserId, targetUserId, cancellationToken);
+        }
+        catch (SupabaseRequestException ex)
+        {
+            return Problem(
+                title: "Unfollow request failed",
+                detail: ex.Details ?? ex.Message,
+                statusCode: StatusCodes.Status400BadRequest);
+        }
+
         if (!deleted)
         {
             return NotFound();

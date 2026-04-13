@@ -6,6 +6,7 @@ import {
   type UserLibraryState,
 } from '@/services/api/mock/libraryState';
 import { buildApiUrl, isBackendApiEnabled } from '@/services/api/http';
+import { supabaseAuth } from '@/services/api/supabaseAuth';
 import type { ShelfStatus, User } from '@/types';
 
 export interface LibraryClient {
@@ -31,6 +32,11 @@ const createHeaders = (userId: string, hasBody = false): HeadersInit => {
     Accept: 'application/json',
     'X-User-Id': userId,
   };
+  const accessToken = supabaseAuth.getAccessToken();
+
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
 
   if (hasBody) {
     headers['Content-Type'] = 'application/json';

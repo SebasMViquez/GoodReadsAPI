@@ -211,3 +211,314 @@
 ### Notes
 
 - Esta fase adapta la UX existente de páginas (`Readers`, `Profile`, `BookDetails`, `Library`, `Notifications`) a endpoints reales sin reescribir páginas una por una, usando los mismos contextos como capa de compatibilidad.
+
+## 2026-04-12
+
+### Added
+
+- Backend legacy-auth fallback authentication handler:
+  - `GoodReadsAPI.Server/Infrastructure/Auth/LegacyUserIdAuthenticationHandler.cs`
+  - Enables authenticated principal creation from `X-User-Id` / `userId` during migration.
+
+### Changed
+
+- Auth hardening for social/library endpoints:
+  - `GoodReadsAPI.Server/Controllers/MeController.cs`
+  - `GoodReadsAPI.Server/Controllers/UsersController.cs`
+  - Added `[Authorize]` to `/api/me/*` and follow/unfollow mutation endpoints.
+- Hybrid auth pipeline in backend startup:
+  - `GoodReadsAPI.Server/Program.cs`
+  - Uses policy scheme to prefer JWT bearer and optionally allow legacy fallback.
+- Current-user resolver now respects fallback toggle:
+  - `GoodReadsAPI.Server/Controllers/ControllerUserIdResolver.cs`
+- Supabase auth config expanded:
+  - `GoodReadsAPI.Server/Configuration/SupabaseAuthOptions.cs`
+  - `GoodReadsAPI.Server/appsettings.json`
+  - `GoodReadsAPI.Server/appsettings.Development.json`
+  - New flag: `AllowLegacyUserIdFallback`.
+- API docs/examples updated to match protected endpoints:
+  - `GoodReadsAPI.Server/README.md`
+  - `GoodReadsAPI.Server/GoodReadsAPI.Server.http`
+  - `docs/BACKEND_ENDPOINT_MATRIX.md`
+  - `docs/AUTH_SUPABASE_MIGRATION.md` (rewritten in UTF-8 clean format).
+
+### Notes
+
+- This cut secures write/me social flows while keeping a controlled migration path.
+- To enforce strict Supabase-only auth in an environment, set:
+  - `SupabaseAuth.Enabled=true`
+  - `SupabaseAuth.AllowLegacyUserIdFallback=false`
+
+## 2026-04-12 (Supabase project binding)
+
+### Added
+
+- Frontend local runtime config file:
+  - `goodreadsapi.client/.env.local` (ignored by git)
+  - Enables Supabase auth and points to the provided Supabase project URL + publishable key.
+
+### Changed
+
+- Local backend secret store configured with Supabase credentials and auth flags via `dotnet user-secrets`:
+  - `Supabase:Url`
+  - `Supabase:ServiceRoleKey`
+  - `SupabaseAuth:Enabled=true`
+  - `SupabaseAuth:Authority=https://<project-ref>.supabase.co/auth/v1`
+  - `SupabaseAuth:Audience=authenticated`
+  - `SupabaseAuth:AllowLegacyUserIdFallback=true`
+
+### Notes
+
+- No sensitive values were committed to repository-tracked files.
+- Backend and frontend are now wired to the same Supabase project for local execution.
+
+## 2026-04-12 (Supabase register UX hardening)
+
+### Changed
+
+- Improved Supabase register flow in:
+  - `goodreadsapi.client/src/context/AuthContext.tsx`
+- New behavior when Supabase returns `User already registered` on signup:
+  - attempts automatic sign-in with same email/password.
+  - if auto sign-in succeeds, session is restored and user continues without failure.
+  - if auto sign-in fails, returns clear guidance to use login with existing account.
+
+### Notes
+
+- This avoids confusing hard failure on repeated signup attempts with an existing email.
+
+## 2026-04-12 (Supabase register flow fallback on null session)
+
+### Changed
+
+- Hardened register flow in:
+  - `goodreadsapi.client/src/context/AuthContext.tsx`
+- New behavior when Supabase signup returns no session (`requiresEmailConfirmation=true`):
+  - attempts sign-in with the same email/password before showing confirmation message.
+  - if sign-in succeeds, user is authenticated and can continue.
+  - if sign-in fails with existing-account semantics, user gets clear message to use login.
+- Reduced noisy error logging for expected `already registered` path by reporting only unhandled signup errors.
+
+### Notes
+
+- This covers projects where Supabase signup behavior may return null session even when account creation/already-exists logic is involved.
+
+## 2026-04-12 (Post-login UX fix when profile hydration is delayed)
+
+### Changed
+
+- Session/auth state robustness improvements:
+  - `goodreadsapi.client/src/context/AuthContext.tsx`
+  - `isAuthenticated` now depends on active session token (`currentSessionUserId`) instead of requiring a pre-hydrated `currentUser` entity.
+  - Added temporary fallback session user model (derived from Supabase session data) when user profile is not yet present in local `state.users`.
+- Supabase session user passthrough added:
+  - `goodreadsapi.client/src/services/api/supabaseAuth.ts`
+  - `goodreadsapi.client/src/services/api/authClient.ts`
+- Redirect behavior after auth success no longer blocks on `currentUser`:
+  - `goodreadsapi.client/src/pages/LoginPage.tsx`
+  - `goodreadsapi.client/src/pages/RegisterPage.tsx`
+
+### Notes
+
+- This ensures protected navigation and user-enabled UI become available immediately after successful session creation, even if backend social profile sync arrives slightly later.
+
+## 2026-04-12 (Readers/Profile alignment with backend users)
+
+### Changed
+
+- Backend user sync in auth state now prefers remote source without retaining local-only seeded users:
+  - `goodreadsapi.client/src/context/AuthContext.tsx`
+  - Readers and other user lists now reflect backend-registered users instead of hardcoded seed-only entries.
+- Fallback session profile data softened to avoid hardcoded biography/role placeholders:
+  - `goodreadsapi.client/src/context/AuthContext.tsx`
+  - `role`, `bio`, `pagesRead`, and badges default to empty values for first-time profiles pending edit.
+- Profile page improved for first-time Supabase users:
+  - `goodreadsapi.client/src/pages/ProfilePage.tsx`
+  - Shows account email on own profile header.
+  - Hides empty lede segments (role/genres) to avoid noisy placeholder UI.
+
+### Notes
+
+- This keeps profile fields editable-first rather than prefilled with synthetic narrative text.
+
+## 2026-04-12 (Auth to app-users consistency fix)
+
+### Changed
+
+- `GoodReadsAPI.Server/Database/Sql/005_supabase_auth_alignment.sql`
+  - Added backfill insert to create missing `public.users` rows for accounts already present in `auth.users` before trigger rollout.
+  - Updated default profile payload for auth-created users to editable-first values (no hardcoded bio/role/badges).
+- `docs/AUTH_SUPABASE_MIGRATION.md`
+  - Documented new backfill behavior and added validation query for `auth.users` <-> `public.users` mapping.
+
+### Notes
+
+- This closes the gap where an account could exist in Supabase Auth but be absent from app social tables, causing fallback/placeholder profiles in frontend.
+
+## 2026-04-12 (Auth-user ID mapping and legacy user sync)
+
+### Changed
+
+- Backend now maps JWT `sub` (auth id) to app user id when available:
+  - `GoodReadsAPI.Server/Infrastructure/Repositories/IUserRepository.cs`
+  - `GoodReadsAPI.Server/Infrastructure/Repositories/SupabaseUserRepository.cs`
+  - `GoodReadsAPI.Server/Program.cs`
+  - `GoodReadsAPI.Server/Controllers/ControllerUserIdResolver.cs`
+- Added `GetByAuthUserIdAsync` repository path and JWT `OnTokenValidated` enrichment with `app_user_id` claim.
+- Expanded auth alignment SQL for existing auth accounts:
+  - `GoodReadsAPI.Server/Database/Sql/005_supabase_auth_alignment.sql`
+  - Inserts missing rows in `public.users` for pre-existing `auth.users` accounts.
+  - Uses editable-first defaults for role/bio/pages/badges.
+- Updated docs:
+  - `GoodReadsAPI.Server/README.md`
+  - `docs/AUTH_SUPABASE_MIGRATION.md`
+
+### Notes
+
+- This fixes the inconsistency where sessions existed in Supabase Auth but app profile rows were missing or resolved under a different app id path.
+
+## 2026-04-12 (Profile DB persistence + follow error hardening)
+
+### Added
+
+- Backend contract and domain model for profile updates:
+  - `GoodReadsAPI.Server/Contracts/UpdateMyProfileRequest.cs`
+  - `GoodReadsAPI.Server/Domain/Entities/UserProfileUpdate.cs`
+- Settings persistence matrix doc:
+  - `docs/SETTINGS_PERSISTENCE_MATRIX.md`
+
+### Changed
+
+- Backend profile persistence path:
+  - `GoodReadsAPI.Server/Controllers/MeController.cs` (`PUT /api/me/profile`)
+  - `GoodReadsAPI.Server/Application/Interfaces/IUserService.cs`
+  - `GoodReadsAPI.Server/Application/Services/UserService.cs`
+  - `GoodReadsAPI.Server/Infrastructure/Repositories/IUserRepository.cs`
+  - `GoodReadsAPI.Server/Infrastructure/Repositories/SupabaseUserRepository.cs`
+- Frontend profile/account save now calls backend/Auth instead of local-only state when backend is enabled:
+  - `goodreadsapi.client/src/services/api/authClient.ts`
+  - `goodreadsapi.client/src/services/api/supabaseAuth.ts`
+  - `goodreadsapi.client/src/context/AuthContext.tsx`
+- Follow flow hardening to avoid generic 500 on duplicate follow/follow-request races:
+  - `GoodReadsAPI.Server/Application/Services/SocialGraphService.cs`
+  - `GoodReadsAPI.Server/Controllers/UsersController.cs`
+- API docs updated:
+  - `GoodReadsAPI.Server/README.md`
+  - `GoodReadsAPI.Server/GoodReadsAPI.Server.http`
+  - `docs/BACKEND_ENDPOINT_MATRIX.md`
+
+### Notes
+
+- Profile section fields now persist in `public.users` via backend API.
+- Account email/password updates in Supabase mode are routed through Supabase Auth update-user endpoint.
+- Notifications/appearance/language/reading/security settings remain local-only for now (documented in matrix).
+
+## 2026-04-12 (Hotfix profile update 404)
+
+### Changed
+
+- `GoodReadsAPI.Server/Application/Services/UserService.cs`
+  - `UpdateProfileAsync` now resolves current user by:
+    1) `public.users.id`
+    2) fallback `public.users.auth_user_id` (Supabase `sub`)
+  - Prevents 404 when authenticated user id in token differs from app user table primary key.
+
+### Notes
+
+- This hotfix keeps profile updates working even if JWT claim mapping (`app_user_id`) is temporarily missing.
+
+## 2026-04-12 (Profile update auto-provision fallback)
+
+### Changed
+
+- `GoodReadsAPI.Server/Application/Services/UserService.cs`
+  - `UpdateProfileAsync` now auto-provisions user profile in `public.users` when no matching row exists yet.
+  - Resolution order for current user on update:
+    1) `id`
+    2) `auth_user_id`
+    3) `email`
+  - If all miss, creates a new row with the submitted profile payload.
+- `GoodReadsAPI.Server/Infrastructure/Repositories/IUserRepository.cs`
+  - Added `CreateProfileAsync(...)`.
+- `GoodReadsAPI.Server/Infrastructure/Repositories/SupabaseUserRepository.cs`
+  - Implemented `CreateProfileAsync(...)` with safe defaults.
+
+### Notes
+
+- This removes the persistent 404 on `PUT /api/me/profile` for auth users whose social profile row has not been created/synced yet.
+
+## 2026-04-12 (Frontend profile update JSON parse hardening)
+
+### Changed
+
+- `goodreadsapi.client/src/services/api/authClient.ts`
+  - Added `parseJsonTextSafely(...)` helper to avoid parsing obvious non-JSON payloads.
+  - Updated `readJsonSafely(...)` to use the safe parser helper.
+  - Hardened `updateMyProfile(...)` error handling so non-JSON backend responses no longer throw raw `SyntaxError`.
+  - Error messages now include response status/content-type plus a compact body snippet for faster diagnosis.
+
+### Notes
+
+- This addresses the frontend runtime error:
+  - `Unexpected token 'G', "GoodReadsA"... is not valid JSON`
+- The flow now fails gracefully with actionable error text even when backend/proxy returns plain text or HTML.
+
+## 2026-04-12 (Backend profile-update 500 hardening for Supabase errors)
+
+### Changed
+
+- `GoodReadsAPI.Server/Infrastructure/Repositories/SupabaseUserRepository.cs`
+  - `GetByAuthUserIdAsync(...)` now skips lookup when the provided value is not a valid UUID.
+- `GoodReadsAPI.Server/Application/Services/UserService.cs`
+  - `ResolveCurrentUserAsync(...)` now tolerates missing `auth_user_id` column errors and continues with email fallback.
+- `GoodReadsAPI.Server/Controllers/MeController.cs`
+  - Added `SupabaseRequestException` handling for `PUT /api/me/profile`.
+  - Supabase failures now return structured `ProblemDetails` (400/401/403/404/409) instead of bubbling as unhandled 500.
+
+### Notes
+
+- This removes the plain-text stacktrace 500 path and surfaces actionable backend detail to frontend.
+
+## 2026-04-12 (PostgREST return=representation hotfix)
+
+### Changed
+
+- `GoodReadsAPI.Server/Infrastructure/Supabase/SupabaseRestClient.cs`
+  - Fixed `InsertAsync(...)` and `UpdateSingleAsync(...)` to request representation using `Prefer: return=representation` header.
+  - Removed invalid `return=representation` query parameter usage from request path builder.
+
+### Notes
+
+- This fixes `PGRST100` on profile update:
+  - `failed to parse filter (representation)`
+- Root cause: PostgREST treated `return=representation` as a malformed filter query param.
+
+## 2026-04-12 (Auth screen auto-redirect consistency)
+
+### Changed
+
+- `goodreadsapi.client/src/pages/LoginPage.tsx`
+  - Added automatic redirect when `isAuthenticated` is true, even without pending local redirect state.
+  - Added redirect target sanitization to prevent remaining in `/login` or `/register`.
+- `goodreadsapi.client/src/pages/RegisterPage.tsx`
+  - Added same authenticated auto-redirect behavior.
+  - Added sanitized redirect target resolution from route state (`from`) with fallback to `/settings`.
+
+### Notes
+
+- This fixes the UI inconsistency where login/register view could remain visible after successful authentication until manual navigation.
+
+## 2026-04-12 (Navbar/Mobile logout quick access)
+
+### Changed
+
+- `goodreadsapi.client/src/components/layout/Navbar.tsx`
+  - Added authenticated logout button (icon action) next to profile avatar.
+  - Wired to `logout()` and immediate redirect to `/login`.
+- `goodreadsapi.client/src/components/layout/MobileMenu.tsx`
+  - Added explicit `Cerrar sesion` action for authenticated users.
+  - Wired to `logout()`, menu close, and redirect to `/login`.
+
+### Notes
+
+- This provides a direct sign-out path from global navigation without requiring entry to Settings.

@@ -1,5 +1,7 @@
 ﻿@GoodReadsAPI.Server_HostAddress = http://localhost:5068
 
+@SupabaseAccessToken = REPLACE_WITH_SUPABASE_ACCESS_TOKEN
+
 GET {{GoodReadsAPI.Server_HostAddress}}/api/health
 Accept: application/json
 
@@ -71,24 +73,49 @@ Accept: application/json
 ###
 
 POST {{GoodReadsAPI.Server_HostAddress}}/api/users/user-dorian/follow
+Authorization: Bearer {{SupabaseAccessToken}}
 X-User-Id: user-amelia
 Accept: application/json
 
 ###
 
 GET {{GoodReadsAPI.Server_HostAddress}}/api/me/follow-requests
+Authorization: Bearer {{SupabaseAccessToken}}
 X-User-Id: user-dorian
 Accept: application/json
 
 ###
 
 GET {{GoodReadsAPI.Server_HostAddress}}/api/me/library
+Authorization: Bearer {{SupabaseAccessToken}}
 X-User-Id: user-amelia
 Accept: application/json
 
 ###
 
+PUT {{GoodReadsAPI.Server_HostAddress}}/api/me/profile
+Authorization: Bearer {{SupabaseAccessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "locale": "es",
+  "name": "Mi nombre visible",
+  "username": "miusuario",
+  "email": "mail@example.com",
+  "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80",
+  "banner": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80",
+  "role": "Lectora",
+  "bio": "Mi bio corta",
+  "location": "",
+  "website": "",
+  "profileVisibility": "public"
+}
+
+###
+
 PUT {{GoodReadsAPI.Server_HostAddress}}/api/me/library/books/book-quiet-index/favorite
+Authorization: Bearer {{SupabaseAccessToken}}
 X-User-Id: user-amelia
 Content-Type: application/json
 Accept: application/json
@@ -100,6 +127,7 @@ Accept: application/json
 ###
 
 PUT {{GoodReadsAPI.Server_HostAddress}}/api/me/library/books/book-quiet-index/shelf
+Authorization: Bearer {{SupabaseAccessToken}}
 X-User-Id: user-amelia
 Content-Type: application/json
 Accept: application/json
@@ -111,6 +139,7 @@ Accept: application/json
 ###
 
 PUT {{GoodReadsAPI.Server_HostAddress}}/api/me/library/books/book-quiet-index/progress
+Authorization: Bearer {{SupabaseAccessToken}}
 X-User-Id: user-amelia
 Content-Type: application/json
 Accept: application/json
@@ -122,6 +151,7 @@ Accept: application/json
 ###
 
 GET {{GoodReadsAPI.Server_HostAddress}}/api/me/library/favorites/following
+Authorization: Bearer {{SupabaseAccessToken}}
 X-User-Id: user-amelia
 Accept: application/json
 

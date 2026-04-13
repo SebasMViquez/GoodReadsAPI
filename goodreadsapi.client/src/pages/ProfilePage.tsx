@@ -182,6 +182,14 @@ export function ProfilePage() {
   const currentHighlight = currentlyReading[0];
   const recentActivity = profileActivity.slice(0, 3);
   const recentReview = reviews[0];
+  const roleLabel = localizedProfile.role.trim();
+  const topGenresLabel = routeProfile.favoriteGenres
+    .slice(0, 3)
+    .map((genre) => getGenreLabel(genre, locale))
+    .join(' · ')
+    .trim();
+  const booksReadLabel = `${routeProfile.booksRead} ${t({ en: 'books read', es: 'libros leidos' })}`;
+  const hasLedeData = Boolean(roleLabel || topGenresLabel || booksReadLabel);
   const heroGalleryBooks = [...currentlyReading, ...favoriteBooks, ...readBooks].filter(
     (book, index, collection) => collection.findIndex((candidate) => candidate.id === book.id) === index,
   );
@@ -209,6 +217,7 @@ export function ProfilePage() {
                   <span className="eyebrow">{t({ en: 'Profile', es: 'Perfil' })}</span>
                   <h1>{routeProfile.name}</h1>
                   <p>@{routeProfile.username}</p>
+                  {isOwnProfile && routeProfile.email ? <p>{routeProfile.email}</p> : null}
                   <div className="profile-hero__meta">
                     <span>
                       <MapPin size={14} /> {routeProfile.location}
@@ -255,11 +264,13 @@ export function ProfilePage() {
                 </span>
               </div>
               <p>{localizedProfile.bio}</p>
-              <div className="profile-hero__lede">
-                <span>{localizedProfile.role}</span>
-                <span>{routeProfile.favoriteGenres.slice(0, 3).map((genre) => getGenreLabel(genre, locale)).join(' · ')}</span>
-                <span>{routeProfile.booksRead} {t({ en: 'books read', es: 'libros leidos' })}</span>
-              </div>
+              {hasLedeData ? (
+                <div className="profile-hero__lede">
+                  {roleLabel ? <span>{roleLabel}</span> : null}
+                  {topGenresLabel ? <span>{topGenresLabel}</span> : null}
+                  <span>{booksReadLabel}</span>
+                </div>
+              ) : null}
               <div className="chip-row">
                 {localizedProfile.badges.map((badge) => (
                   <span key={badge} className="chip chip--accent">

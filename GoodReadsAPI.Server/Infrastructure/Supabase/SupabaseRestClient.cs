@@ -88,7 +88,8 @@ public sealed class SupabaseRestClient(HttpClient httpClient, IOptions<SupabaseO
         CancellationToken cancellationToken)
         where T : class
     {
-        using var request = CreateRequest(HttpMethod.Post, BuildPath(table, string.Empty, "return=representation"));
+        using var request = CreateRequest(HttpMethod.Post, BuildPath(table, string.Empty));
+        request.Headers.Add("Prefer", "return=representation");
         request.Content = JsonContent.Create(payload);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
@@ -113,7 +114,8 @@ public sealed class SupabaseRestClient(HttpClient httpClient, IOptions<SupabaseO
         CancellationToken cancellationToken)
         where T : class
     {
-        using var request = CreateRequest(HttpMethod.Patch, BuildPath(table, query, "return=representation"));
+        using var request = CreateRequest(HttpMethod.Patch, BuildPath(table, query));
+        request.Headers.Add("Prefer", "return=representation");
         request.Content = JsonContent.Create(payload);
 
         using var response = await httpClient.SendAsync(request, cancellationToken);
@@ -179,18 +181,13 @@ public sealed class SupabaseRestClient(HttpClient httpClient, IOptions<SupabaseO
             details);
     }
 
-    private static string BuildPath(string table, string query, string? extra = null)
+    private static string BuildPath(string table, string query)
     {
         var builder = new StringBuilder($"{table}?select=*");
 
         if (!string.IsNullOrWhiteSpace(query))
         {
             builder.Append('&').Append(query);
-        }
-
-        if (!string.IsNullOrWhiteSpace(extra))
-        {
-            builder.Append('&').Append(extra);
         }
 
         return builder.ToString();

@@ -10,6 +10,9 @@ Este documento traduce el flujo actual del frontend a contratos API backend.
 - Fechas: ISO UTC (`timestamptz`)
 - IDs: `text` estables (compatibles con seeds actuales)
 - Localized fields: JSON `{ "en": "...", "es": "..." }`
+- Auth para endpoints protegidos:
+  - `Authorization: Bearer <supabase-token>` (preferido)
+  - `X-User-Id`/`userId` solo mientras `SupabaseAuth.AllowLegacyUserIdFallback=true`
 
 ## Estado Actual
 
@@ -25,16 +28,17 @@ Este documento traduce el flujo actual del frontend a contratos API backend.
   - `GET /api/users/{username}`
   - `GET /api/users/{userId}/followers`
   - `GET /api/users/{userId}/following`
-  - `POST /api/users/{targetUserId}/follow` (contexto actual via `X-User-Id`)
-  - `DELETE /api/users/{targetUserId}/follow` (contexto actual via `X-User-Id`)
-  - `GET /api/me/follow-requests`
-  - `POST /api/me/follow-requests/{requestId}/accept`
-  - `POST /api/me/follow-requests/{requestId}/decline`
-  - `GET /api/me/library`
-  - `PUT /api/me/library/books/{bookId}/shelf`
-  - `PUT /api/me/library/books/{bookId}/favorite`
-  - `PUT /api/me/library/books/{bookId}/progress`
-  - `GET /api/me/library/favorites/following`
+  - `POST /api/users/{targetUserId}/follow` (`[Authorize]`)
+  - `DELETE /api/users/{targetUserId}/follow` (`[Authorize]`)
+  - `PUT /api/me/profile` (`[Authorize]`)
+  - `GET /api/me/follow-requests` (`[Authorize]`)
+  - `POST /api/me/follow-requests/{requestId}/accept` (`[Authorize]`)
+  - `POST /api/me/follow-requests/{requestId}/decline` (`[Authorize]`)
+  - `GET /api/me/library` (`[Authorize]`)
+  - `PUT /api/me/library/books/{bookId}/shelf` (`[Authorize]`)
+  - `PUT /api/me/library/books/{bookId}/favorite` (`[Authorize]`)
+  - `PUT /api/me/library/books/{bookId}/progress` (`[Authorize]`)
+  - `GET /api/me/library/favorites/following` (`[Authorize]`)
 - Pendiente:
   - Todo lo demás del flujo social/library/profile/messaging/settings.
 

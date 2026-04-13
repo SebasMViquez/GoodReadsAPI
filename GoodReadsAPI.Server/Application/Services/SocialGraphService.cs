@@ -1,6 +1,7 @@
 using GoodReadsAPI.Server.Application.Interfaces;
 using GoodReadsAPI.Server.Domain.Entities;
 using GoodReadsAPI.Server.Infrastructure.Repositories;
+using GoodReadsAPI.Server.Infrastructure.Supabase;
 
 namespace GoodReadsAPI.Server.Application.Services;
 
@@ -105,25 +106,45 @@ public sealed class SocialGraphService(
                     pending);
             }
 
-            var followRequest = await relationshipRepository.CreateFollowRequestAsync(
-                new FollowRequest(
-                    Id: $"request-{Guid.NewGuid():N}"[..16],
-                    RequesterId: currentUserId,
-                    TargetUserId: targetUserId,
-                    Status: "pending",
-                    CreatedAt: DateTimeOffset.UtcNow,
-                    RespondedAt: null),
-                cancellationToken);
+            FollowRequest followRequest;
+            try
+            {
+                followRequest = await relationshipRepository.CreateFollowRequestAsync(
+                    new FollowRequest(
+                        Id: $"request-{Guid.NewGuid():N}"[..16],
+                        RequesterId: currentUserId,
+                        TargetUserId: targetUserId,
+                        Status: "pending",
+                        CreatedAt: DateTimeOffset.UtcNow,
+                        RespondedAt: null),
+                    cancellationToken);
+            }
+            catch (SupabaseRequestException ex) when (IsUniqueViolation(ex))
+            {
+                var pendingAfterConflict = await relationshipRepository.GetPendingFollowRequestAsync(
+                    currentUserId,
+                    targetUserId,
+                    cancellationToken);
+
+                return new(FollowOperationOutcomes.RequestAlreadyPending, pendingAfterConflict);
+            }
 
             return new(FollowOperationOutcomes.Requested, followRequest);
         }
 
-        await relationshipRepository.CreateFollowAsync(
-            new UserFollow(
-                FollowerId: currentUserId,
-                FollowedId: targetUserId,
-                CreatedAt: DateTimeOffset.UtcNow),
-            cancellationToken);
+        try
+        {
+            await relationshipRepository.CreateFollowAsync(
+                new UserFollow(
+                    FollowerId: currentUserId,
+                    FollowedId: targetUserId,
+                    CreatedAt: DateTimeOffset.UtcNow),
+                cancellationToken);
+        }
+        catch (SupabaseRequestException ex) when (IsUniqueViolation(ex))
+        {
+            return new(FollowOperationOutcomes.AlreadyFollowing);
+        }
 
         await userRepository.IncrementFollowingCountAsync(currentUserId, 1, cancellationToken);
         await userRepository.IncrementFollowersCountAsync(targetUserId, 1, cancellationToken);
@@ -217,4 +238,7 @@ public sealed class SocialGraphService(
 
         return updated;
     }
+
+    private static bool IsUniqueViolation(SupabaseRequestException exception) =>
+        exception.Details?.Contains("23505", StringComparison.Ordinal) == true;
 }

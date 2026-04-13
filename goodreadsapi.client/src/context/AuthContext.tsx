@@ -9,7 +9,11 @@
   type PropsWithChildren,
 } from 'react';
 import { useToast } from '@/context/ToastContext';
-import { authClient, type RemoteUserProfile } from '@/services/api/authClient';
+import {
+  authClient,
+  type RemoteUserProfile,
+  type UpdateRemoteProfileInput,
+} from '@/services/api/authClient';
 import type { AuthState } from '@/services/api/mock/authState';
 import {
   clearIdentifiedUser,
@@ -121,6 +125,63 @@ const normalizeUsername = (value: string) => value.trim().toLowerCase().replace(
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const createId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 const localizeNow = () => ({ en: 'Just now', es: 'ahora' });
+const sanitizeHandle = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '');
+
+const createFallbackSessionUser = (
+  userId: string,
+  sessionUser: ReturnType<typeof authClient.getSupabaseSessionUser>,
+): User => {
+  const metadata = sessionUser?.user_metadata ?? {};
+  const metadataName = typeof metadata.name === 'string' ? metadata.name.trim() : '';
+  const metadataUsername = typeof metadata.username === 'string' ? metadata.username.trim() : '';
+  const email = sessionUser?.email?.trim() ?? '';
+  const emailHandle = email ? email.split('@')[0] : '';
+  const rawUsername = metadataUsername || emailHandle || 'user';
+  const username = sanitizeHandle(rawUsername) || 'user';
+  const name = metadataName || emailHandle || '';
+
+  return {
+    id: userId,
+    name,
+    username,
+    email,
+    avatar:
+      'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80',
+    banner:
+      'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80',
+    role: {
+      en: '',
+      es: '',
+    },
+    bio: {
+      en: '',
+      es: '',
+    },
+    location: '',
+    website: '',
+    profileVisibility: 'public',
+    followersCount: 0,
+    followingCount: 0,
+    booksRead: 0,
+    pagesRead: {
+      en: '',
+      es: '',
+    },
+    streak: 0,
+    favoriteGenres: [],
+    badges: [],
+    wantToRead: [],
+    currentlyReading: [],
+    read: [],
+    favoriteBooks: [],
+    featuredReviews: [],
+    activity: [],
+  };
+};
 
 const adjustFollowCounts = (
   users: User[],
@@ -189,15 +250,9 @@ const mergeRemoteUserWithLocal = (remoteUser: RemoteUserProfile, localUser?: Use
 
 const mergeRemoteUsers = (currentUsers: User[], remoteUsers: RemoteUserProfile[]): User[] => {
   const localById = new Map(currentUsers.map((user) => [user.id, user]));
-  const remoteIds = new Set(remoteUsers.map((user) => user.id));
-
-  const mergedRemoteUsers = remoteUsers.map((remoteUser) =>
+  return remoteUsers.map((remoteUser) =>
     mergeRemoteUserWithLocal(remoteUser, localById.get(remoteUser.id)),
   );
-
-  const localOnlyUsers = currentUsers.filter((user) => !remoteIds.has(user.id));
-
-  return [...mergedRemoteUsers, ...localOnlyUsers];
 };
 
 const mergeIncomingPendingRequests = (
@@ -228,11 +283,29 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [bootstrapVersion, setBootstrapVersion] = useState(0);
-  const currentUser = useMemo(
-    () => state.users.find((user) => user.id === authClient.resolveCurrentUserId(state)) ?? null,
-    [state],
-  );
-  const currentUserId = currentUser?.id ?? null;
+  const currentSessionUserId = useMemo(() => authClient.resolveCurrentUserId(state), [state]);
+  const currentUser = useMemo(() => {
+    if (!currentSessionUserId) {
+      return null;
+    }
+
+    const matchedUser = state.users.find((user) => user.id === currentSessionUserId);
+    if (matchedUser) {
+      return matchedUser;
+    }
+
+    if (!authClient.isSupabaseAuthEnabled()) {
+      return null;
+    }
+
+    const sessionUser = authClient.getSupabaseSessionUser();
+    if (!sessionUser || sessionUser.id !== currentSessionUserId) {
+      return createFallbackSessionUser(currentSessionUserId, null);
+    }
+
+    return createFallbackSessionUser(currentSessionUserId, sessionUser);
+  }, [currentSessionUserId, state.users]);
+  const currentUserId = currentUser?.id ?? currentSessionUserId ?? null;
 
   useEffect(() => {
     stateRef.current = state;
@@ -309,6 +382,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         let nextState = await authClient.hydrate();
 
+        if (authClient.isSupabaseAuthEnabled()) {
+          const supabaseUserId = await authClient.restoreSupabaseSession();
+
+          nextState = supabaseUserId
+            ? authClient.createSession(nextState, supabaseUserId)
+            : authClient.clearSession(nextState);
+        }
+
         if (authClient.isBackendEnabled()) {
           try {
             nextState = await buildBackendSyncedState(nextState);
@@ -378,7 +459,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     setBootstrapVersion((currentValue) => currentValue + 1);
   }, []);
 
-  const isAuthenticated = Boolean(currentUser);
+  const isAuthenticated = Boolean(currentSessionUserId);
 
   const getUserById = useCallback(
     (userId: string) => state.users.find((user) => user.id === userId),
@@ -431,6 +512,46 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [state.users],
   );
 
+  const resolveLoginEmail = useCallback(
+    async (identifier: string) => {
+      const trimmedIdentifier = identifier.trim();
+
+      if (!trimmedIdentifier) {
+        return null;
+      }
+
+      if (trimmedIdentifier.includes('@')) {
+        return normalizeEmail(trimmedIdentifier);
+      }
+
+      const normalizedUsername = normalizeUsername(trimmedIdentifier);
+
+      const localUser = state.users.find(
+        (user) => normalizeUsername(user.username) === normalizedUsername,
+      );
+
+      if (localUser?.email) {
+        return normalizeEmail(localUser.email);
+      }
+
+      if (!authClient.isBackendEnabled()) {
+        return null;
+      }
+
+      try {
+        const remoteUsers = await authClient.fetchUsers(trimmedIdentifier);
+        const remoteUser = remoteUsers.find(
+          (user) => normalizeUsername(user.username) === normalizedUsername,
+        );
+
+        return remoteUser?.email ? normalizeEmail(remoteUser.email) : null;
+      } catch {
+        return null;
+      }
+    },
+    [state.users],
+  );
+
   const login = useCallback(
     async ({ identifier, password }: LoginInput): Promise<AuthActionResult> => {
       if (status !== 'ready') {
@@ -438,6 +559,55 @@ export function AuthProvider({ children }: PropsWithChildren) {
           success: false,
           error: 'The account service is still loading. Try again in a moment.',
         };
+      }
+
+      if (authClient.isSupabaseAuthEnabled()) {
+        const resolvedEmail = await resolveLoginEmail(identifier);
+
+        if (!resolvedEmail) {
+          trackEvent('auth_login_failed', { identifierType: identifier.includes('@') ? 'email' : 'username' });
+          return {
+            success: false,
+            error: 'We could not map that username/email to a Supabase account.',
+          };
+        }
+
+        try {
+          const supabaseUserId = await authClient.signInWithSupabase(resolvedEmail, password);
+
+          if (!supabaseUserId) {
+            return {
+              success: false,
+              error: 'Supabase login did not return an active session.',
+            };
+          }
+
+          setState((currentState) => authClient.createSession(currentState, supabaseUserId));
+
+          if (authClient.isBackendEnabled()) {
+            void refreshBackendSocialState();
+          }
+
+          showToast(
+            {
+              en: 'Session ready.',
+              es: 'Sesion lista.',
+            },
+            'success',
+          );
+
+          trackEvent('auth_login_succeeded', { userId: supabaseUserId, provider: 'supabase' });
+          return { success: true };
+        } catch (caughtError) {
+          reportError(caughtError, { scope: 'auth.login.supabase' });
+          trackEvent('auth_login_failed', { identifierType: identifier.includes('@') ? 'email' : 'username' });
+          return {
+            success: false,
+            error: caughtError instanceof Error
+              ? caughtError.message
+              : 'Supabase login failed.',
+          };
+        }
       }
 
       const normalizedIdentifier = identifier.trim();
@@ -475,7 +645,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       return { success: true };
     },
-    [showToast, state.accounts, state.users, status],
+    [refreshBackendSocialState, resolveLoginEmail, showToast, state.accounts, state.users, status],
   );
 
   const register = useCallback(
@@ -489,6 +659,150 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       const normalizedNewUsername = normalizeUsername(username);
       const normalizedNewEmail = normalizeEmail(email);
+
+      if (authClient.isSupabaseAuthEnabled()) {
+        if (!isUsernameAvailable(normalizedNewUsername)) {
+          return {
+            success: false,
+            error: 'That username is already taken.',
+          };
+        }
+
+        try {
+          const registration = await authClient.signUpWithSupabase({
+            email: normalizedNewEmail,
+            name: name.trim(),
+            password,
+            username: normalizedNewUsername,
+          });
+
+          if (!registration.userId) {
+            return {
+              success: false,
+              error: 'Supabase signup did not return a user identifier.',
+            };
+          }
+
+          if (registration.requiresEmailConfirmation) {
+            try {
+              const supabaseUserId = await authClient.signInWithSupabase(normalizedNewEmail, password);
+              if (!supabaseUserId) {
+                return {
+                  success: false,
+                  error: 'Check your email to confirm the account, then sign in.',
+                };
+              }
+
+              setState((currentState) => authClient.createSession(currentState, supabaseUserId));
+
+              if (authClient.isBackendEnabled()) {
+                void refreshBackendSocialState();
+              }
+
+              showToast(
+                {
+                  en: 'Account created successfully.',
+                  es: 'Cuenta creada con exito.',
+                },
+                'success',
+              );
+
+              trackEvent('auth_register_succeeded', {
+                userId: supabaseUserId,
+                username: normalizedNewUsername,
+                provider: 'supabase',
+              });
+
+              return { success: true };
+            } catch (signInAfterSignUpError) {
+              const signInMessage = signInAfterSignUpError instanceof Error
+                ? signInAfterSignUpError.message.toLowerCase()
+                : '';
+
+              if (signInMessage.includes('already registered') || signInMessage.includes('invalid login')) {
+                return {
+                  success: false,
+                  error: 'This email is already registered. Go to login and use your existing password.',
+                };
+              }
+            }
+
+            return {
+              success: false,
+              error: 'Check your email to confirm the account, then sign in.',
+            };
+          }
+
+          setState((currentState) => authClient.createSession(currentState, registration.userId!));
+
+          if (authClient.isBackendEnabled()) {
+            void refreshBackendSocialState();
+          }
+
+          showToast(
+            {
+              en: 'Account created successfully.',
+              es: 'Cuenta creada con exito.',
+            },
+            'success',
+          );
+
+          trackEvent('auth_register_succeeded', {
+            userId: registration.userId,
+            username: normalizedNewUsername,
+            provider: 'supabase',
+          });
+
+          return { success: true };
+        } catch (caughtError) {
+          const errorMessage = caughtError instanceof Error
+            ? caughtError.message
+            : 'Supabase signup failed.';
+          const userAlreadyRegistered = errorMessage.toLowerCase().includes('already registered');
+
+          if (userAlreadyRegistered) {
+            try {
+              const supabaseUserId = await authClient.signInWithSupabase(normalizedNewEmail, password);
+              if (!supabaseUserId) {
+                return {
+                  success: false,
+                  error: 'This email is already registered. Go to login to continue.',
+                };
+              }
+
+              setState((currentState) => authClient.createSession(currentState, supabaseUserId));
+
+              if (authClient.isBackendEnabled()) {
+                void refreshBackendSocialState();
+              }
+
+              showToast(
+                {
+                  en: 'Existing account detected. Session restored.',
+                  es: 'Cuenta existente detectada. Sesion restaurada.',
+                },
+                'info',
+              );
+
+              trackEvent('auth_login_succeeded', { userId: supabaseUserId, provider: 'supabase' });
+              return { success: true };
+            } catch (signInError) {
+              reportError(signInError, { scope: 'auth.register.supabase.autoSignIn' });
+              return {
+                success: false,
+                error: 'This email is already registered. Go to login and use your existing password.',
+              };
+            }
+          }
+
+          reportError(caughtError, { scope: 'auth.register.supabase' });
+
+          return {
+            success: false,
+            error: errorMessage,
+          };
+        }
+      }
 
       if (!isUsernameAvailable(normalizedNewUsername)) {
         return {
@@ -577,10 +891,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       return { success: true };
     },
-    [isUsernameAvailable, showToast, state.accounts, status],
+    [
+      isUsernameAvailable,
+      refreshBackendSocialState,
+      showToast,
+      state.accounts,
+      status,
+    ],
   );
 
   const logout = useCallback(() => {
+    if (authClient.isSupabaseAuthEnabled()) {
+      void authClient.signOutSupabase().catch((caughtError) => {
+        reportError(caughtError, { scope: 'auth.logout.supabase' });
+      });
+    }
+
     setState((currentState) => authClient.clearSession(currentState));
 
     showToast(
@@ -610,6 +936,65 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       const normalizedNextEmail = normalizeEmail(input.email);
+      if (authClient.isBackendEnabled()) {
+        try {
+          if (
+            authClient.isSupabaseAuthEnabled() &&
+            normalizedNextEmail &&
+            normalizedNextEmail !== normalizeEmail(currentUser.email)
+          ) {
+            await authClient.updateSupabaseEmail(normalizedNextEmail);
+          }
+
+          const remoteInput: UpdateRemoteProfileInput = {
+            locale: input.locale,
+            name: input.name.trim(),
+            username: normalizeUsername(input.username),
+            email: normalizedNextEmail,
+            avatar: input.avatar.trim(),
+            banner: input.banner.trim(),
+            role: input.role.trim(),
+            bio: input.bio.trim(),
+            location: input.location.trim(),
+            website: input.website.trim(),
+            profileVisibility: input.profileVisibility,
+          };
+
+          const updatedRemoteUser = await authClient.updateMyProfile(currentUser.id, remoteInput);
+          setState((currentState) => {
+            const existingUser = currentState.users.find((user) => user.id === updatedRemoteUser.id);
+            const mergedUser = mergeRemoteUserWithLocal(updatedRemoteUser, existingUser);
+            const hasUser = Boolean(existingUser);
+
+            return {
+              ...currentState,
+              users: hasUser
+                ? currentState.users.map((user) =>
+                    user.id === mergedUser.id ? mergedUser : user)
+                : [mergedUser, ...currentState.users],
+              accounts: currentState.accounts.map((account) =>
+                account.userId === mergedUser.id
+                  ? {
+                      ...account,
+                      email: normalizedNextEmail,
+                    }
+                  : account),
+            };
+          });
+
+          trackEvent('profile_updated', { userId: currentUser.id, provider: 'backend' });
+          return { success: true };
+        } catch (caughtError) {
+          reportError(caughtError, { scope: 'auth.profile.update.backend' });
+          return {
+            success: false,
+            error: caughtError instanceof Error
+              ? caughtError.message
+              : 'Could not update profile in backend.',
+          };
+        }
+      }
+
       const emailTaken = state.accounts.some(
         (account) =>
           account.userId !== currentUser.id &&
@@ -672,6 +1057,37 @@ export function AuthProvider({ children }: PropsWithChildren) {
           success: false,
           error: 'You need to be logged in first.',
         };
+      }
+
+      if (newPassword.trim().length < 6) {
+        return {
+          success: false,
+          error: 'Use at least 6 characters for the new password.',
+        };
+      }
+
+      if (authClient.isSupabaseAuthEnabled()) {
+        if (!currentUser.email?.trim()) {
+          return {
+            success: false,
+            error: 'Current account email is required to validate password change.',
+          };
+        }
+
+        try {
+          await authClient.signInWithSupabase(normalizeEmail(currentUser.email), currentPassword);
+          await authClient.updateSupabasePassword(newPassword);
+          trackEvent('password_changed', { userId: currentUser.id, provider: 'supabase' });
+          return { success: true };
+        } catch (caughtError) {
+          reportError(caughtError, { scope: 'auth.password.supabase' });
+          return {
+            success: false,
+            error: caughtError instanceof Error
+              ? caughtError.message
+              : 'Password update failed.',
+          };
+        }
       }
 
       const account = state.accounts.find((candidate) => candidate.userId === currentUser.id);

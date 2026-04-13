@@ -8,6 +8,7 @@ import {
   type AuthState,
 } from '@/services/api/mock/authState';
 import { buildApiUrl, isBackendApiEnabled } from '@/services/api/http';
+import { supabaseAuth, type SupabaseUser } from '@/services/api/supabaseAuth';
 import type { FollowRequest, LocalizedText } from '@/types';
 
 export interface RemoteUserProfile {
@@ -36,6 +37,20 @@ export interface FollowUserResult {
   followRequest: FollowRequest | null;
 }
 
+export interface UpdateRemoteProfileInput {
+  locale: string;
+  name: string;
+  username: string;
+  email: string;
+  avatar: string;
+  banner: string;
+  role: string;
+  bio: string;
+  location: string;
+  website: string;
+  profileVisibility: 'public' | 'private';
+}
+
 export interface AuthClient {
   createInitialState: () => AuthState;
   createSession: (state: AuthState, userId: string) => AuthState;
@@ -54,6 +69,29 @@ export interface AuthClient {
     requestId: string,
     status: 'accepted' | 'declined',
   ) => Promise<FollowRequest | null>;
+  updateMyProfile: (
+    currentUserId: string,
+    input: UpdateRemoteProfileInput,
+  ) => Promise<RemoteUserProfile>;
+  isSupabaseAuthEnabled: () => boolean;
+  restoreSupabaseSession: () => Promise<string | null>;
+  getSupabaseCurrentUserId: () => string | null;
+  getSupabaseSessionUser: () => SupabaseUser | null;
+  updateSupabaseEmail: (email: string) => Promise<void>;
+  updateSupabasePassword: (password: string) => Promise<void>;
+  signInWithSupabase: (email: string, password: string) => Promise<string | null>;
+  signUpWithSupabase: (
+    input: {
+      name: string;
+      username: string;
+      email: string;
+      password: string;
+    },
+  ) => Promise<{
+    userId: string | null;
+    requiresEmailConfirmation: boolean;
+  }>;
+  signOutSupabase: () => Promise<void>;
 }
 
 interface RemoteFollowRequestResponse {
@@ -69,13 +107,34 @@ interface RemoteFollowOperationResponse {
   followRequest?: RemoteFollowRequestResponse | null;
 }
 
-const readJsonSafely = async <T>(response: Response): Promise<T | null> => {
-  const text = await response.text();
-  if (!text.trim()) {
+const parseJsonTextSafely = <T>(rawText: string): T | null => {
+  const trimmed = rawText.trim();
+  if (!trimmed) {
     return null;
   }
 
-  return JSON.parse(text) as T;
+  // Avoid parser exceptions for obvious non-JSON payloads (HTML/plain text).
+  if (
+    !trimmed.startsWith('{') &&
+    !trimmed.startsWith('[') &&
+    trimmed !== 'null' &&
+    trimmed !== 'true' &&
+    trimmed !== 'false' &&
+    !/^-?\d+(\.\d+)?([eE][+-]?\d+)?$/.test(trimmed)
+  ) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(trimmed) as T;
+  } catch {
+    return null;
+  }
+};
+
+const readJsonSafely = async <T>(response: Response): Promise<T | null> => {
+  const text = await response.text();
+  return parseJsonTextSafely<T>(text);
 };
 
 const mapFollowRequest = (value: RemoteFollowRequestResponse): FollowRequest => ({
@@ -90,6 +149,11 @@ const createAuthHeaders = (currentUserId?: string): HeadersInit => {
   const headers: Record<string, string> = {
     Accept: 'application/json',
   };
+  const accessToken = supabaseAuth.getAccessToken();
+
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
 
   if (currentUserId) {
     headers['X-User-Id'] = currentUserId;
@@ -207,5 +271,72 @@ export const authClient: AuthClient = {
 
     const payload = await readJsonSafely<RemoteFollowRequestResponse>(response);
     return payload ? mapFollowRequest(payload) : null;
+  },
+  async updateMyProfile(currentUserId, input) {
+    const response = await fetch(buildApiUrl('/api/me/profile'), {
+      method: 'PUT',
+      headers: {
+        ...createAuthHeaders(currentUserId),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      const compactBody = rawBody.trim().replace(/\s+/g, ' ').slice(0, 180);
+      const parsedErrorBody = parseJsonTextSafely<{ detail?: string; message?: string; title?: string }>(rawBody);
+      const detail = parsedErrorBody?.detail ?? parsedErrorBody?.message ?? parsedErrorBody?.title;
+      const contentType = response.headers.get('content-type') ?? 'unknown';
+
+      throw new Error(
+        detail ??
+        (compactBody
+          ? `Profile update failed (${response.status}, ${contentType}): ${compactBody}`
+          : `Profile update failed (${response.status}).`),
+      );
+    }
+
+    const rawSuccessBody = await response.text();
+    const payload = parseJsonTextSafely<RemoteUserProfile>(rawSuccessBody);
+    if (!payload) {
+      const compactBody = rawSuccessBody.trim().replace(/\s+/g, ' ').slice(0, 180);
+      const contentType = response.headers.get('content-type') ?? 'unknown';
+      throw new Error(
+        compactBody
+          ? `Profile update returned non-JSON payload (${contentType}): ${compactBody}`
+          : 'Profile update response was empty.',
+      );
+    }
+    return payload;
+  },
+  isSupabaseAuthEnabled: () => supabaseAuth.isEnabled(),
+  async restoreSupabaseSession() {
+    const session = await supabaseAuth.restoreSession();
+    return session?.user.id ?? null;
+  },
+  getSupabaseCurrentUserId: () => supabaseAuth.getCurrentUserId(),
+  getSupabaseSessionUser: () => supabaseAuth.getSessionUser(),
+  async updateSupabaseEmail(email) {
+    await supabaseAuth.updateUser({ email });
+  },
+  async updateSupabasePassword(password) {
+    await supabaseAuth.updateUser({ password });
+  },
+  async signInWithSupabase(email, password) {
+    const result = await supabaseAuth.signInWithPassword(email, password);
+    return result.session?.user.id ?? result.user?.id ?? null;
+  },
+  async signUpWithSupabase({ email, name, password, username }) {
+    const result = await supabaseAuth.signUp(email, password, { name, username });
+    const userId = result.session?.user.id ?? result.user?.id ?? null;
+
+    return {
+      userId,
+      requiresEmailConfirmation: !result.session,
+    };
+  },
+  async signOutSupabase() {
+    await supabaseAuth.signOut();
   },
 };

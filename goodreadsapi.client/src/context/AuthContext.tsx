@@ -278,6 +278,51 @@ const mergeIncomingPendingRequests = (
   return [...incomingPendingRequests, ...preservedRequests];
 };
 
+const mergeDerivedFollowRequestNotifications = (
+  existingNotifications: NotificationItem[],
+  followRequests: FollowRequest[],
+  currentUserId: string | null,
+): NotificationItem[] => {
+  if (!currentUserId) {
+    return existingNotifications;
+  }
+
+  const pendingRequestsForCurrentUser = followRequests.filter(
+    (request) =>
+      request.targetUserId === currentUserId &&
+      request.status === 'pending',
+  );
+
+  if (!pendingRequestsForCurrentUser.length) {
+    return existingNotifications;
+  }
+
+  const existingByRequestId = new Map(
+    existingNotifications
+      .filter(
+        (notification) =>
+          notification.type === 'follow-request' &&
+          notification.requestId,
+      )
+      .map((notification) => [notification.requestId as string, notification]),
+  );
+
+  const syntheticNotifications = pendingRequestsForCurrentUser
+    .filter((request) => !existingByRequestId.has(request.id))
+    .map<NotificationItem>((request) => ({
+      id: `follow-request-${request.id}`,
+      userId: currentUserId,
+      type: 'follow-request',
+      actorUserId: request.requesterId,
+      requestId: request.id,
+      createdAt: request.createdAt,
+      // Synthetic entries are display-only; keep them read by default.
+      read: true,
+    }));
+
+  return [...syntheticNotifications, ...existingNotifications];
+};
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const { showToast } = useToast();
   const [state, setState] = useState<AuthState>(authClient.createInitialState);
@@ -1854,6 +1899,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
         ),
     [state.users],
   );
+  const notifications = useMemo(
+    () =>
+      mergeDerivedFollowRequestNotifications(
+        state.notifications,
+        state.followRequests,
+        currentUser?.id ?? null,
+      ),
+    [currentUser?.id, state.followRequests, state.notifications],
+  );
   const unreadMessagesCount = useMemo(() => {
     if (!currentUser) {
       return 0;
@@ -1875,10 +1929,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return 0;
     }
 
-    return state.notifications.filter(
+    return notifications.filter(
       (notification) => notification.userId === currentUser.id && !notification.read,
     ).length;
-  }, [currentUser, state.notifications]);
+  }, [currentUser, notifications]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -1894,7 +1948,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       activityFeed,
       conversations: state.conversations,
       followRequests: state.followRequests,
-      notifications: state.notifications,
+      notifications,
       unreadMessagesCount,
       unreadNotificationsCount,
       login,
@@ -1955,7 +2009,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       sendMessage,
       state.conversations,
       state.followRequests,
-      state.notifications,
+      notifications,
       state.reviews,
       state.users,
       toggleFollowUser,

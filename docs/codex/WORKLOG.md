@@ -543,3 +543,16 @@
 ### Notes
 
 - Goal: avoid assigning a gendered portrait to users who have not uploaded an avatar yet.
+
+## 2026-04-12 (Pending follow-requests visibility in notifications)
+
+### Changed
+
+- `goodreadsapi.client/src/context/AuthContext.tsx`
+  - Added derived-notification merge for pending follow requests targeted to the current user.
+  - Pending requests now surface as notification entries even when backend does not emit a dedicated notification record.
+  - Context `notifications` and unread-count logic now use the merged notification list.
+
+### Notes
+
+- Fixes the case where private-profile follow requests were persisted but not visible/manageable in Notification UI.

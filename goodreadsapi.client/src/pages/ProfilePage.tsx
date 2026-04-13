@@ -24,6 +24,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useLibrary } from '@/context/LibraryContext';
 import { getAuthorById, getBooksByIds, getBooksFromProgress } from '@/services/api/catalog';
+import { libraryClient } from '@/services/api/libraryClient';
+import { reportError } from '@/services/monitoring/reporting';
+import type { UserLibraryState } from '@/services/api/mock/libraryState';
 import { localizeBook, localizeUser } from '@/i18n/localize';
 import { getGenreLabel } from '@/i18n/ui';
 
@@ -121,8 +124,56 @@ export function ProfilePage() {
   const [tab, setTab] = useState<ProfileTab>('activity');
   const [followersQuery, setFollowersQuery] = useState('');
   const [followingQuery, setFollowingQuery] = useState('');
+  const [routeLibraryState, setRouteLibraryState] = useState<UserLibraryState | null>(null);
+  const [routeLibraryStatus, setRouteLibraryStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const isOwnProfile = currentUser?.username === username || profile?.username === username;
   const routeProfile = isOwnProfile ? profile ?? currentUser : getUserByUsername(username);
+  const routeProfileId = routeProfile?.id ?? null;
+  const routeProfileVisibility = routeProfile?.profileVisibility ?? 'public';
+
+  useEffect(() => {
+    if (!routeProfileId || isOwnProfile || !libraryClient.isBackendEnabled()) {
+      setRouteLibraryState(null);
+      setRouteLibraryStatus('idle');
+      return;
+    }
+
+    if (routeProfileVisibility === 'private') {
+      setRouteLibraryState(null);
+      setRouteLibraryStatus('idle');
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadRouteLibrary = async () => {
+      setRouteLibraryStatus('loading');
+
+      try {
+        const nextRouteLibrary = await libraryClient.fetchForProfile(routeProfileId, currentUser?.id ?? null);
+        if (cancelled) {
+          return;
+        }
+
+        setRouteLibraryState(nextRouteLibrary);
+        setRouteLibraryStatus('ready');
+      } catch (caughtError) {
+        if (cancelled) {
+          return;
+        }
+
+        reportError(caughtError, { scope: 'profile.library.fetch', targetUserId: routeProfileId });
+        setRouteLibraryStatus('error');
+        setRouteLibraryState(null);
+      }
+    };
+
+    void loadRouteLibrary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, isOwnProfile, routeProfileId, routeProfileVisibility]);
 
   if (!routeProfile) {
     return (
@@ -146,10 +197,25 @@ export function ProfilePage() {
   }
 
   const localizedProfile = localizeUser(routeProfile, locale);
-  const favoriteBooks = getBooksByIds(routeProfile.favoriteBooks);
-  const wantToReadBooks = getBooksByIds(routeProfile.wantToRead);
-  const readBooks = getBooksByIds(routeProfile.read);
-  const currentlyReading = getBooksFromProgress(routeProfile.currentlyReading);
+  const effectiveFavoriteBookIds =
+    !isOwnProfile && routeLibraryState ? routeLibraryState.favorites : routeProfile.favoriteBooks;
+  const effectiveWantToReadBookIds =
+    !isOwnProfile && routeLibraryState
+      ? routeLibraryState.shelves['want-to-read']
+      : routeProfile.wantToRead;
+  const effectiveReadBookIds =
+    !isOwnProfile && routeLibraryState ? routeLibraryState.shelves.read : routeProfile.read;
+  const effectiveCurrentlyReading =
+    !isOwnProfile && routeLibraryState
+      ? routeLibraryState.shelves['currently-reading'].map((bookId) => ({
+          bookId,
+          progress: routeLibraryState.progressMap[bookId] ?? 0,
+        }))
+      : routeProfile.currentlyReading;
+  const favoriteBooks = getBooksByIds(effectiveFavoriteBookIds);
+  const wantToReadBooks = getBooksByIds(effectiveWantToReadBookIds);
+  const readBooks = getBooksByIds(effectiveReadBookIds);
+  const currentlyReading = getBooksFromProgress(effectiveCurrentlyReading);
   const reviews = getReviewsForUser(routeProfile.id);
   const profileActivity = activityFeed.filter((activity) => activity.userId === routeProfile.id);
   const followers = getFollowersForUser(routeProfile.id);
@@ -182,6 +248,14 @@ export function ProfilePage() {
   const currentHighlight = currentlyReading[0];
   const recentActivity = profileActivity.slice(0, 3);
   const recentReview = reviews[0];
+  const roleLabel = localizedProfile.role.trim();
+  const topGenresLabel = routeProfile.favoriteGenres
+    .slice(0, 3)
+    .map((genre) => getGenreLabel(genre, locale))
+    .join(' · ')
+    .trim();
+  const booksReadLabel = `${routeProfile.booksRead} ${t({ en: 'books read', es: 'libros leidos' })}`;
+  const hasLedeData = Boolean(roleLabel || topGenresLabel || booksReadLabel);
   const heroGalleryBooks = [...currentlyReading, ...favoriteBooks, ...readBooks].filter(
     (book, index, collection) => collection.findIndex((candidate) => candidate.id === book.id) === index,
   );
@@ -209,6 +283,7 @@ export function ProfilePage() {
                   <span className="eyebrow">{t({ en: 'Profile', es: 'Perfil' })}</span>
                   <h1>{routeProfile.name}</h1>
                   <p>@{routeProfile.username}</p>
+                  {isOwnProfile && routeProfile.email ? <p>{routeProfile.email}</p> : null}
                   <div className="profile-hero__meta">
                     <span>
                       <MapPin size={14} /> {routeProfile.location}
@@ -255,11 +330,13 @@ export function ProfilePage() {
                 </span>
               </div>
               <p>{localizedProfile.bio}</p>
-              <div className="profile-hero__lede">
-                <span>{localizedProfile.role}</span>
-                <span>{routeProfile.favoriteGenres.slice(0, 3).map((genre) => getGenreLabel(genre, locale)).join(' · ')}</span>
-                <span>{routeProfile.booksRead} {t({ en: 'books read', es: 'libros leidos' })}</span>
-              </div>
+              {hasLedeData ? (
+                <div className="profile-hero__lede">
+                  {roleLabel ? <span>{roleLabel}</span> : null}
+                  {topGenresLabel ? <span>{topGenresLabel}</span> : null}
+                  <span>{booksReadLabel}</span>
+                </div>
+              ) : null}
               <div className="chip-row">
                 {localizedProfile.badges.map((badge) => (
                   <span key={badge} className="chip chip--accent">
@@ -432,7 +509,9 @@ export function ProfilePage() {
                         ))
                       ) : (
                         <div className="profile-inline-empty">
-                          {t({ en: 'Nothing in progress right now.', es: 'No hay nada en progreso ahora mismo.' })}
+                          {routeLibraryStatus === 'loading' && !isOwnProfile
+                            ? t({ en: 'Loading shelf activity...', es: 'Cargando actividad de estantes...' })
+                            : t({ en: 'Nothing in progress right now.', es: 'No hay nada en progreso ahora mismo.' })}
                         </div>
                       )}
                     </div>
@@ -452,7 +531,9 @@ export function ProfilePage() {
                         ))
                       ) : (
                         <div className="profile-inline-empty">
-                          {t({ en: 'No future reads saved yet.', es: 'Todavia no hay futuras lecturas guardadas.' })}
+                          {routeLibraryStatus === 'loading' && !isOwnProfile
+                            ? t({ en: 'Loading shelf activity...', es: 'Cargando actividad de estantes...' })
+                            : t({ en: 'No future reads saved yet.', es: 'Todavia no hay futuras lecturas guardadas.' })}
                         </div>
                       )}
                     </div>
@@ -472,7 +553,9 @@ export function ProfilePage() {
                         ))
                       ) : (
                         <div className="profile-inline-empty">
-                          {t({ en: 'No finished books in this visible shelf.', es: 'No hay libros terminados en este estante visible.' })}
+                          {routeLibraryStatus === 'loading' && !isOwnProfile
+                            ? t({ en: 'Loading shelf activity...', es: 'Cargando actividad de estantes...' })
+                            : t({ en: 'No finished books in this visible shelf.', es: 'No hay libros terminados en este estante visible.' })}
                         </div>
                       )}
                     </div>

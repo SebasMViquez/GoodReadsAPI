@@ -1,14 +1,19 @@
-import {
+﻿import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type PropsWithChildren,
 } from 'react';
 import { useToast } from '@/context/ToastContext';
-import { authClient } from '@/services/api/authClient';
+import {
+  authClient,
+  type RemoteUserProfile,
+  type UpdateRemoteProfileInput,
+} from '@/services/api/authClient';
 import type { AuthState } from '@/services/api/mock/authState';
 import {
   clearIdentifiedUser,
@@ -120,6 +125,65 @@ const normalizeUsername = (value: string) => value.trim().toLowerCase().replace(
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 const createId = (prefix: string) => `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 const localizeNow = () => ({ en: 'Just now', es: 'ahora' });
+const sanitizeHandle = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '');
+const DEFAULT_AVATAR_PLACEHOLDER =
+  'https://api.dicebear.com/9.x/shapes/svg?seed=goodreads-reader';
+const DEFAULT_BANNER_PLACEHOLDER =
+  'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80';
+
+const createFallbackSessionUser = (
+  userId: string,
+  sessionUser: ReturnType<typeof authClient.getSupabaseSessionUser>,
+): User => {
+  const metadata = sessionUser?.user_metadata ?? {};
+  const metadataName = typeof metadata.name === 'string' ? metadata.name.trim() : '';
+  const metadataUsername = typeof metadata.username === 'string' ? metadata.username.trim() : '';
+  const email = sessionUser?.email?.trim() ?? '';
+  const emailHandle = email ? email.split('@')[0] : '';
+  const rawUsername = metadataUsername || emailHandle || 'user';
+  const username = sanitizeHandle(rawUsername) || 'user';
+  const name = metadataName || emailHandle || '';
+
+  return {
+    id: userId,
+    name,
+    username,
+    email,
+    avatar: DEFAULT_AVATAR_PLACEHOLDER,
+    banner: DEFAULT_BANNER_PLACEHOLDER,
+    role: {
+      en: '',
+      es: '',
+    },
+    bio: {
+      en: '',
+      es: '',
+    },
+    location: '',
+    website: '',
+    profileVisibility: 'public',
+    followersCount: 0,
+    followingCount: 0,
+    booksRead: 0,
+    pagesRead: {
+      en: '',
+      es: '',
+    },
+    streak: 0,
+    favoriteGenres: [],
+    badges: [],
+    wantToRead: [],
+    currentlyReading: [],
+    read: [],
+    favoriteBooks: [],
+    featuredReviews: [],
+    activity: [],
+  };
+};
 
 const adjustFollowCounts = (
   users: User[],
@@ -156,19 +220,204 @@ const updateUserActivity = (
           ...user,
           activity: updater(user.activity),
         }
-      : user,
+        : user,
   );
+
+const mergeRemoteUserWithLocal = (remoteUser: RemoteUserProfile, localUser?: User): User => ({
+  id: remoteUser.id,
+  name: remoteUser.name,
+  username: remoteUser.username,
+  email: remoteUser.email,
+  avatar: remoteUser.avatar,
+  banner: remoteUser.banner,
+  role: remoteUser.role,
+  bio: remoteUser.bio,
+  location: remoteUser.location,
+  website: remoteUser.website,
+  profileVisibility: remoteUser.profileVisibility,
+  followersCount: remoteUser.followersCount,
+  followingCount: remoteUser.followingCount,
+  booksRead: remoteUser.booksRead,
+  pagesRead: remoteUser.pagesRead,
+  streak: remoteUser.streak,
+  favoriteGenres: remoteUser.favoriteGenres,
+  badges: remoteUser.badges,
+  wantToRead: localUser?.wantToRead ?? [],
+  currentlyReading: localUser?.currentlyReading ?? [],
+  read: localUser?.read ?? [],
+  favoriteBooks: localUser?.favoriteBooks ?? [],
+  featuredReviews: localUser?.featuredReviews ?? [],
+  activity: localUser?.activity ?? [],
+});
+
+const mergeRemoteUsers = (currentUsers: User[], remoteUsers: RemoteUserProfile[]): User[] => {
+  const localById = new Map(currentUsers.map((user) => [user.id, user]));
+  return remoteUsers.map((remoteUser) =>
+    mergeRemoteUserWithLocal(remoteUser, localById.get(remoteUser.id)),
+  );
+};
+
+const mergeIncomingPendingRequests = (
+  existingRequests: FollowRequest[],
+  currentUserId: string,
+  incomingPendingRequests: FollowRequest[],
+) => {
+  const incomingIds = new Set(incomingPendingRequests.map((request) => request.id));
+  const preservedRequests = existingRequests.filter((request) => {
+    if (incomingIds.has(request.id)) {
+      return false;
+    }
+
+    if (request.targetUserId === currentUserId && request.status === 'pending') {
+      return false;
+    }
+
+    return true;
+  });
+
+  return [...incomingPendingRequests, ...preservedRequests];
+};
+
+const mergeDerivedFollowRequestNotifications = (
+  existingNotifications: NotificationItem[],
+  followRequests: FollowRequest[],
+  currentUserId: string | null,
+): NotificationItem[] => {
+  if (!currentUserId) {
+    return existingNotifications;
+  }
+
+  const pendingRequestsForCurrentUser = followRequests.filter(
+    (request) =>
+      request.targetUserId === currentUserId &&
+      request.status === 'pending',
+  );
+
+  if (!pendingRequestsForCurrentUser.length) {
+    return existingNotifications;
+  }
+
+  const existingByRequestId = new Map(
+    existingNotifications
+      .filter(
+        (notification) =>
+          notification.type === 'follow-request' &&
+          notification.requestId,
+      )
+      .map((notification) => [notification.requestId as string, notification]),
+  );
+
+  const syntheticNotifications = pendingRequestsForCurrentUser
+    .filter((request) => !existingByRequestId.has(request.id))
+    .map<NotificationItem>((request) => ({
+      id: `follow-request-${request.id}`,
+      userId: currentUserId,
+      type: 'follow-request',
+      actorUserId: request.requesterId,
+      requestId: request.id,
+      createdAt: request.createdAt,
+      // Synthetic entries are display-only; keep them read by default.
+      read: true,
+    }));
+
+  return [...syntheticNotifications, ...existingNotifications];
+};
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const { showToast } = useToast();
   const [state, setState] = useState<AuthState>(authClient.createInitialState);
+  const stateRef = useRef(state);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError] = useState<string | null>(null);
   const [bootstrapVersion, setBootstrapVersion] = useState(0);
-  const currentUser = useMemo(
-    () => state.users.find((user) => user.id === authClient.resolveCurrentUserId(state)) ?? null,
-    [state],
+  const currentSessionUserId = useMemo(() => authClient.resolveCurrentUserId(state), [state]);
+  const currentUser = useMemo(() => {
+    if (!currentSessionUserId) {
+      return null;
+    }
+
+    const matchedUser = state.users.find((user) => user.id === currentSessionUserId);
+    if (matchedUser) {
+      return matchedUser;
+    }
+
+    if (!authClient.isSupabaseAuthEnabled()) {
+      return null;
+    }
+
+    const sessionUser = authClient.getSupabaseSessionUser();
+    if (!sessionUser || sessionUser.id !== currentSessionUserId) {
+      return createFallbackSessionUser(currentSessionUserId, null);
+    }
+
+    return createFallbackSessionUser(currentSessionUserId, sessionUser);
+  }, [currentSessionUserId, state.users]);
+  const currentUserId = currentUser?.id ?? currentSessionUserId ?? null;
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  const buildBackendSyncedState = useCallback(
+    async (baseState: AuthState): Promise<AuthState> => {
+      if (!authClient.isBackendEnabled()) {
+        return baseState;
+      }
+
+      const remoteUsers = await authClient.fetchUsers();
+      const mergedUsers = mergeRemoteUsers(baseState.users, remoteUsers);
+      const followingEntries = await Promise.all(
+        remoteUsers.map(async (user) => {
+          try {
+            return {
+              userId: user.id,
+              followingUserIds: await authClient.fetchFollowingUserIds(user.id),
+            };
+          } catch {
+            return {
+              userId: user.id,
+              followingUserIds: baseState.followingByUser[user.id] ?? [],
+            };
+          }
+        }),
+      );
+
+      const followingByUser = { ...baseState.followingByUser };
+      followingEntries.forEach(({ userId, followingUserIds }) => {
+        followingByUser[userId] = followingUserIds;
+      });
+
+      const currentUserId = authClient.resolveCurrentUserId(baseState);
+      const followRequests = currentUserId
+        ? mergeIncomingPendingRequests(
+            baseState.followRequests,
+            currentUserId,
+            await authClient.fetchPendingFollowRequests(currentUserId).catch(() => []),
+          )
+        : baseState.followRequests;
+
+      return {
+        ...baseState,
+        users: mergedUsers,
+        followingByUser,
+        followRequests,
+      };
+    },
+    [],
   );
+
+  const refreshBackendSocialState = useCallback(async () => {
+    if (!authClient.isBackendEnabled()) {
+      return;
+    }
+
+    try {
+      const nextState = await buildBackendSyncedState(stateRef.current);
+      setState(nextState);
+    } catch (caughtError) {
+      reportError(caughtError, { scope: 'auth.remoteSync' });
+    }
+  }, [buildBackendSyncedState]);
 
   useEffect(() => {
     let cancelled = false;
@@ -178,7 +427,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setError(null);
 
       try {
-        const nextState = await authClient.hydrate();
+        let nextState = await authClient.hydrate();
+
+        if (authClient.isSupabaseAuthEnabled()) {
+          const supabaseUserId = await authClient.restoreSupabaseSession();
+
+          nextState = supabaseUserId
+            ? authClient.createSession(nextState, supabaseUserId)
+            : authClient.clearSession(nextState);
+        }
+
+        if (authClient.isBackendEnabled()) {
+          try {
+            nextState = await buildBackendSyncedState(nextState);
+          } catch (remoteSyncError) {
+            reportError(remoteSyncError, { scope: 'auth.hydrate.remoteSync' });
+          }
+        }
 
         if (cancelled) {
           return;
@@ -202,7 +467,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [bootstrapVersion]);
+  }, [bootstrapVersion, buildBackendSyncedState]);
 
   useEffect(() => {
     if (status !== 'ready') {
@@ -229,11 +494,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
     });
   }, [currentUser]);
 
+  useEffect(() => {
+    if (status !== 'ready' || !currentUserId || !authClient.isBackendEnabled()) {
+      return;
+    }
+
+    void refreshBackendSocialState();
+  }, [currentUserId, refreshBackendSocialState, status]);
+
   const retry = useCallback(() => {
     setBootstrapVersion((currentValue) => currentValue + 1);
   }, []);
 
-  const isAuthenticated = Boolean(currentUser);
+  const isAuthenticated = Boolean(currentSessionUserId);
 
   const getUserById = useCallback(
     (userId: string) => state.users.find((user) => user.id === userId),
@@ -286,6 +559,46 @@ export function AuthProvider({ children }: PropsWithChildren) {
     [state.users],
   );
 
+  const resolveLoginEmail = useCallback(
+    async (identifier: string) => {
+      const trimmedIdentifier = identifier.trim();
+
+      if (!trimmedIdentifier) {
+        return null;
+      }
+
+      if (trimmedIdentifier.includes('@')) {
+        return normalizeEmail(trimmedIdentifier);
+      }
+
+      const normalizedUsername = normalizeUsername(trimmedIdentifier);
+
+      const localUser = state.users.find(
+        (user) => normalizeUsername(user.username) === normalizedUsername,
+      );
+
+      if (localUser?.email) {
+        return normalizeEmail(localUser.email);
+      }
+
+      if (!authClient.isBackendEnabled()) {
+        return null;
+      }
+
+      try {
+        const remoteUsers = await authClient.fetchUsers(trimmedIdentifier);
+        const remoteUser = remoteUsers.find(
+          (user) => normalizeUsername(user.username) === normalizedUsername,
+        );
+
+        return remoteUser?.email ? normalizeEmail(remoteUser.email) : null;
+      } catch {
+        return null;
+      }
+    },
+    [state.users],
+  );
+
   const login = useCallback(
     async ({ identifier, password }: LoginInput): Promise<AuthActionResult> => {
       if (status !== 'ready') {
@@ -293,6 +606,55 @@ export function AuthProvider({ children }: PropsWithChildren) {
           success: false,
           error: 'The account service is still loading. Try again in a moment.',
         };
+      }
+
+      if (authClient.isSupabaseAuthEnabled()) {
+        const resolvedEmail = await resolveLoginEmail(identifier);
+
+        if (!resolvedEmail) {
+          trackEvent('auth_login_failed', { identifierType: identifier.includes('@') ? 'email' : 'username' });
+          return {
+            success: false,
+            error: 'We could not map that username/email to a Supabase account.',
+          };
+        }
+
+        try {
+          const supabaseUserId = await authClient.signInWithSupabase(resolvedEmail, password);
+
+          if (!supabaseUserId) {
+            return {
+              success: false,
+              error: 'Supabase login did not return an active session.',
+            };
+          }
+
+          setState((currentState) => authClient.createSession(currentState, supabaseUserId));
+
+          if (authClient.isBackendEnabled()) {
+            void refreshBackendSocialState();
+          }
+
+          showToast(
+            {
+              en: 'Session ready.',
+              es: 'Sesion lista.',
+            },
+            'success',
+          );
+
+          trackEvent('auth_login_succeeded', { userId: supabaseUserId, provider: 'supabase' });
+          return { success: true };
+        } catch (caughtError) {
+          reportError(caughtError, { scope: 'auth.login.supabase' });
+          trackEvent('auth_login_failed', { identifierType: identifier.includes('@') ? 'email' : 'username' });
+          return {
+            success: false,
+            error: caughtError instanceof Error
+              ? caughtError.message
+              : 'Supabase login failed.',
+          };
+        }
       }
 
       const normalizedIdentifier = identifier.trim();
@@ -330,7 +692,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       return { success: true };
     },
-    [showToast, state.accounts, state.users, status],
+    [refreshBackendSocialState, resolveLoginEmail, showToast, state.accounts, state.users, status],
   );
 
   const register = useCallback(
@@ -344,6 +706,150 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       const normalizedNewUsername = normalizeUsername(username);
       const normalizedNewEmail = normalizeEmail(email);
+
+      if (authClient.isSupabaseAuthEnabled()) {
+        if (!isUsernameAvailable(normalizedNewUsername)) {
+          return {
+            success: false,
+            error: 'That username is already taken.',
+          };
+        }
+
+        try {
+          const registration = await authClient.signUpWithSupabase({
+            email: normalizedNewEmail,
+            name: name.trim(),
+            password,
+            username: normalizedNewUsername,
+          });
+
+          if (!registration.userId) {
+            return {
+              success: false,
+              error: 'Supabase signup did not return a user identifier.',
+            };
+          }
+
+          if (registration.requiresEmailConfirmation) {
+            try {
+              const supabaseUserId = await authClient.signInWithSupabase(normalizedNewEmail, password);
+              if (!supabaseUserId) {
+                return {
+                  success: false,
+                  error: 'Check your email to confirm the account, then sign in.',
+                };
+              }
+
+              setState((currentState) => authClient.createSession(currentState, supabaseUserId));
+
+              if (authClient.isBackendEnabled()) {
+                void refreshBackendSocialState();
+              }
+
+              showToast(
+                {
+                  en: 'Account created successfully.',
+                  es: 'Cuenta creada con exito.',
+                },
+                'success',
+              );
+
+              trackEvent('auth_register_succeeded', {
+                userId: supabaseUserId,
+                username: normalizedNewUsername,
+                provider: 'supabase',
+              });
+
+              return { success: true };
+            } catch (signInAfterSignUpError) {
+              const signInMessage = signInAfterSignUpError instanceof Error
+                ? signInAfterSignUpError.message.toLowerCase()
+                : '';
+
+              if (signInMessage.includes('already registered') || signInMessage.includes('invalid login')) {
+                return {
+                  success: false,
+                  error: 'This email is already registered. Go to login and use your existing password.',
+                };
+              }
+            }
+
+            return {
+              success: false,
+              error: 'Check your email to confirm the account, then sign in.',
+            };
+          }
+
+          setState((currentState) => authClient.createSession(currentState, registration.userId!));
+
+          if (authClient.isBackendEnabled()) {
+            void refreshBackendSocialState();
+          }
+
+          showToast(
+            {
+              en: 'Account created successfully.',
+              es: 'Cuenta creada con exito.',
+            },
+            'success',
+          );
+
+          trackEvent('auth_register_succeeded', {
+            userId: registration.userId,
+            username: normalizedNewUsername,
+            provider: 'supabase',
+          });
+
+          return { success: true };
+        } catch (caughtError) {
+          const errorMessage = caughtError instanceof Error
+            ? caughtError.message
+            : 'Supabase signup failed.';
+          const userAlreadyRegistered = errorMessage.toLowerCase().includes('already registered');
+
+          if (userAlreadyRegistered) {
+            try {
+              const supabaseUserId = await authClient.signInWithSupabase(normalizedNewEmail, password);
+              if (!supabaseUserId) {
+                return {
+                  success: false,
+                  error: 'This email is already registered. Go to login to continue.',
+                };
+              }
+
+              setState((currentState) => authClient.createSession(currentState, supabaseUserId));
+
+              if (authClient.isBackendEnabled()) {
+                void refreshBackendSocialState();
+              }
+
+              showToast(
+                {
+                  en: 'Existing account detected. Session restored.',
+                  es: 'Cuenta existente detectada. Sesion restaurada.',
+                },
+                'info',
+              );
+
+              trackEvent('auth_login_succeeded', { userId: supabaseUserId, provider: 'supabase' });
+              return { success: true };
+            } catch (signInError) {
+              reportError(signInError, { scope: 'auth.register.supabase.autoSignIn' });
+              return {
+                success: false,
+                error: 'This email is already registered. Go to login and use your existing password.',
+              };
+            }
+          }
+
+          reportError(caughtError, { scope: 'auth.register.supabase' });
+
+          return {
+            success: false,
+            error: errorMessage,
+          };
+        }
+      }
 
       if (!isUsernameAvailable(normalizedNewUsername)) {
         return {
@@ -365,10 +871,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
         name: name.trim(),
         username: normalizedNewUsername,
         email: normalizedNewEmail,
-        avatar:
-          'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80',
-        banner:
-          'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80',
+        avatar: DEFAULT_AVATAR_PLACEHOLDER,
+        banner: DEFAULT_BANNER_PLACEHOLDER,
         role: {
           en: 'New reader',
           es: 'Nuevo lector',
@@ -432,10 +936,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
       return { success: true };
     },
-    [isUsernameAvailable, showToast, state.accounts, status],
+    [
+      isUsernameAvailable,
+      refreshBackendSocialState,
+      showToast,
+      state.accounts,
+      status,
+    ],
   );
 
   const logout = useCallback(() => {
+    if (authClient.isSupabaseAuthEnabled()) {
+      void authClient.signOutSupabase().catch((caughtError) => {
+        reportError(caughtError, { scope: 'auth.logout.supabase' });
+      });
+    }
+
     setState((currentState) => authClient.clearSession(currentState));
 
     showToast(
@@ -465,6 +981,65 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       const normalizedNextEmail = normalizeEmail(input.email);
+      if (authClient.isBackendEnabled()) {
+        try {
+          if (
+            authClient.isSupabaseAuthEnabled() &&
+            normalizedNextEmail &&
+            normalizedNextEmail !== normalizeEmail(currentUser.email)
+          ) {
+            await authClient.updateSupabaseEmail(normalizedNextEmail);
+          }
+
+          const remoteInput: UpdateRemoteProfileInput = {
+            locale: input.locale,
+            name: input.name.trim(),
+            username: normalizeUsername(input.username),
+            email: normalizedNextEmail,
+            avatar: input.avatar.trim(),
+            banner: input.banner.trim(),
+            role: input.role.trim(),
+            bio: input.bio.trim(),
+            location: input.location.trim(),
+            website: input.website.trim(),
+            profileVisibility: input.profileVisibility,
+          };
+
+          const updatedRemoteUser = await authClient.updateMyProfile(currentUser.id, remoteInput);
+          setState((currentState) => {
+            const existingUser = currentState.users.find((user) => user.id === updatedRemoteUser.id);
+            const mergedUser = mergeRemoteUserWithLocal(updatedRemoteUser, existingUser);
+            const hasUser = Boolean(existingUser);
+
+            return {
+              ...currentState,
+              users: hasUser
+                ? currentState.users.map((user) =>
+                    user.id === mergedUser.id ? mergedUser : user)
+                : [mergedUser, ...currentState.users],
+              accounts: currentState.accounts.map((account) =>
+                account.userId === mergedUser.id
+                  ? {
+                      ...account,
+                      email: normalizedNextEmail,
+                    }
+                  : account),
+            };
+          });
+
+          trackEvent('profile_updated', { userId: currentUser.id, provider: 'backend' });
+          return { success: true };
+        } catch (caughtError) {
+          reportError(caughtError, { scope: 'auth.profile.update.backend' });
+          return {
+            success: false,
+            error: caughtError instanceof Error
+              ? caughtError.message
+              : 'Could not update profile in backend.',
+          };
+        }
+      }
+
       const emailTaken = state.accounts.some(
         (account) =>
           account.userId !== currentUser.id &&
@@ -527,6 +1102,37 @@ export function AuthProvider({ children }: PropsWithChildren) {
           success: false,
           error: 'You need to be logged in first.',
         };
+      }
+
+      if (newPassword.trim().length < 6) {
+        return {
+          success: false,
+          error: 'Use at least 6 characters for the new password.',
+        };
+      }
+
+      if (authClient.isSupabaseAuthEnabled()) {
+        if (!currentUser.email?.trim()) {
+          return {
+            success: false,
+            error: 'Current account email is required to validate password change.',
+          };
+        }
+
+        try {
+          await authClient.signInWithSupabase(normalizeEmail(currentUser.email), currentPassword);
+          await authClient.updateSupabasePassword(newPassword);
+          trackEvent('password_changed', { userId: currentUser.id, provider: 'supabase' });
+          return { success: true };
+        } catch (caughtError) {
+          reportError(caughtError, { scope: 'auth.password.supabase' });
+          return {
+            success: false,
+            error: caughtError instanceof Error
+              ? caughtError.message
+              : 'Password update failed.',
+          };
+        }
       }
 
       const account = state.accounts.find((candidate) => candidate.userId === currentUser.id);
@@ -602,6 +1208,85 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
 
       const alreadyFollowing = (state.followingByUser[currentUser.id] ?? []).includes(targetUserId);
+
+      if (authClient.isBackendEnabled()) {
+        void (async () => {
+          try {
+            if (alreadyFollowing) {
+              const unfollowed = await authClient.unfollowUser(currentUser.id, targetUserId);
+
+              if (!unfollowed) {
+                return;
+              }
+
+              showToast(
+                {
+                  en: `You stopped following ${targetUser.name}.`,
+                  es: `Dejaste de seguir a ${targetUser.name}.`,
+                },
+                'info',
+              );
+
+              await refreshBackendSocialState();
+              return;
+            }
+
+            const result = await authClient.followUser(currentUser.id, targetUserId);
+
+            if (result.outcome === 'requested' && result.followRequest) {
+              const pendingRequest = result.followRequest;
+              setState((currentState) => ({
+                ...currentState,
+                followRequests: [
+                  pendingRequest,
+                  ...currentState.followRequests.filter(
+                    (request) => request.id !== pendingRequest.id,
+                  ),
+                ],
+              }));
+
+              showToast(
+                {
+                  en: 'Follow request sent.',
+                  es: 'Solicitud de seguimiento enviada.',
+                },
+                'info',
+              );
+
+              await refreshBackendSocialState();
+              return;
+            }
+
+            if (result.outcome === 'request-already-pending') {
+              return;
+            }
+
+            if (result.outcome === 'followed' || result.outcome === 'already-following') {
+              trackEvent('follow_started', { targetUserId, userId: currentUser.id });
+              showToast(
+                {
+                  en: `You are now following ${targetUser.name}.`,
+                  es: `Ahora sigues a ${targetUser.name}.`,
+                },
+                'success',
+              );
+
+              await refreshBackendSocialState();
+            }
+          } catch (caughtError) {
+            reportError(caughtError, { scope: 'social.follow', targetUserId, userId: currentUser.id });
+            showToast(
+              {
+                en: 'Could not update follow state right now.',
+                es: 'No se pudo actualizar el seguimiento en este momento.',
+              },
+              'warning',
+            );
+          }
+        })();
+
+        return;
+      }
 
       if (alreadyFollowing) {
         setState((currentState) => ({
@@ -700,7 +1385,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
         'success',
       );
     },
-    [currentUser, getUserById, hasPendingFollowRequest, showToast, state.followingByUser],
+    [
+      currentUser,
+      getUserById,
+      hasPendingFollowRequest,
+      refreshBackendSocialState,
+      showToast,
+      state.followingByUser,
+    ],
   );
 
   const respondToFollowRequest = useCallback(
@@ -712,6 +1404,65 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const request = state.followRequests.find((candidate) => candidate.id === requestId);
 
       if (!request || request.targetUserId !== currentUser.id || request.status !== 'pending') {
+        return;
+      }
+
+      if (authClient.isBackendEnabled()) {
+        void (async () => {
+          try {
+            const updatedRequest = await authClient.respondToFollowRequest(currentUser.id, requestId, status);
+            if (!updatedRequest) {
+              return;
+            }
+
+            setState((currentState) => ({
+              ...currentState,
+              followRequests: currentState.followRequests.map((candidate) =>
+                candidate.id === requestId ? updatedRequest : candidate,
+              ),
+              notifications:
+                status === 'accepted'
+                  ? [
+                      {
+                        id: createId('notification'),
+                        userId: request.requesterId,
+                        type: 'request-approved',
+                        actorUserId: currentUser.id,
+                        requestId,
+                        createdAt: new Date().toISOString(),
+                        read: false,
+                      },
+                      ...currentState.notifications,
+                    ]
+                  : currentState.notifications,
+            }));
+
+            await refreshBackendSocialState();
+
+            showToast(
+              status === 'accepted'
+                ? {
+                    en: 'Follow request accepted.',
+                    es: 'Solicitud aceptada.',
+                  }
+                : {
+                    en: 'Follow request declined.',
+                    es: 'Solicitud rechazada.',
+                  },
+              status === 'accepted' ? 'success' : 'info',
+            );
+          } catch (caughtError) {
+            reportError(caughtError, { scope: 'social.followRequest.respond', requestId, status });
+            showToast(
+              {
+                en: 'Could not respond to the follow request.',
+                es: 'No se pudo responder la solicitud de seguimiento.',
+              },
+              'warning',
+            );
+          }
+        })();
+
         return;
       }
 
@@ -767,7 +1518,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         status === 'accepted' ? 'success' : 'info',
       );
     },
-    [currentUser, showToast, state.followRequests],
+    [currentUser, refreshBackendSocialState, showToast, state.followRequests],
   );
 
   const createReview = useCallback(
@@ -1148,6 +1899,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
         ),
     [state.users],
   );
+  const notifications = useMemo(
+    () =>
+      mergeDerivedFollowRequestNotifications(
+        state.notifications,
+        state.followRequests,
+        currentUser?.id ?? null,
+      ),
+    [currentUser?.id, state.followRequests, state.notifications],
+  );
   const unreadMessagesCount = useMemo(() => {
     if (!currentUser) {
       return 0;
@@ -1169,10 +1929,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return 0;
     }
 
-    return state.notifications.filter(
+    return notifications.filter(
       (notification) => notification.userId === currentUser.id && !notification.read,
     ).length;
-  }, [currentUser, state.notifications]);
+  }, [currentUser, notifications]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
@@ -1188,7 +1948,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       activityFeed,
       conversations: state.conversations,
       followRequests: state.followRequests,
-      notifications: state.notifications,
+      notifications,
       unreadMessagesCount,
       unreadNotificationsCount,
       login,
@@ -1249,7 +2009,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       sendMessage,
       state.conversations,
       state.followRequests,
-      state.notifications,
+      notifications,
       state.reviews,
       state.users,
       toggleFollowUser,
@@ -1275,3 +2035,4 @@ export const useAuth = () => {
 
   return context;
 };
+

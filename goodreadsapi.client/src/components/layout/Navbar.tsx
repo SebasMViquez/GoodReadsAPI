@@ -1,16 +1,23 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, Search, Settings, Sparkles, X } from 'lucide-react';
+import { LogOut, Menu, Search, Settings, Sparkles, X } from 'lucide-react';
 import { useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { MobileMenu } from './MobileMenu';
 import { NotificationMenu } from './NotificationMenu';
 
 export function Navbar() {
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { t, ui } = useLanguage();
-  const { currentUser, isAuthenticated } = useAuth();
+  const { currentUser, isAuthenticated, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    setIsMenuOpen(false);
+    navigate('/login', { replace: true });
+  };
 
   const navigation = [
     { to: '/explore', label: t(ui.nav.discover) },
@@ -75,6 +82,15 @@ export function Navbar() {
             </div>
             {currentUser ? (
               <div className="navbar__profile-group">
+                <button
+                  type="button"
+                  className="navbar__search-link"
+                  onClick={handleLogout}
+                  aria-label={t({ en: 'Log out', es: 'Cerrar sesion' })}
+                  title={t({ en: 'Log out', es: 'Cerrar sesion' })}
+                >
+                  <LogOut size={16} />
+                </button>
                 <Link
                   className="navbar__profile-avatar"
                   to={`/profile/${currentUser.username}`}

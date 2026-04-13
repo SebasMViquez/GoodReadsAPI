@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { LogOut } from 'lucide-react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 
@@ -9,9 +10,16 @@ interface MobileMenuProps {
 }
 
 export function MobileMenu({ open, onClose }: MobileMenuProps) {
+  const navigate = useNavigate();
   const { t, ui } = useLanguage();
-  const { currentUser, isAuthenticated } = useAuth();
+  const { currentUser, isAuthenticated, logout } = useAuth();
   const panelRef = useRef<HTMLDivElement | null>(null);
+
+  const handleLogout = () => {
+    logout();
+    onClose();
+    navigate('/login', { replace: true });
+  };
 
   useEffect(() => {
     if (!open) {
@@ -116,6 +124,10 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
               <Link className="button button--ghost" to="/settings" onClick={onClose}>
                 {t({ en: 'Settings', es: 'Configuracion' })}
               </Link>
+              <button type="button" className="button button--ghost" onClick={handleLogout}>
+                <LogOut size={16} />
+                {t({ en: 'Log out', es: 'Cerrar sesion' })}
+              </button>
             </div>
           ) : (
             <div className="mobile-menu__auth">

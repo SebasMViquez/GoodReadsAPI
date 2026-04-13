@@ -1,6 +1,163 @@
-@GoodReadsAPI.Server_HostAddress = http://localhost:5068
+﻿@GoodReadsAPI.Server_HostAddress = http://localhost:5068
 
-GET {{GoodReadsAPI.Server_HostAddress}}/weatherforecast/
+@SupabaseAccessToken = REPLACE_WITH_SUPABASE_ACCESS_TOKEN
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/health
+Accept: application/json
+
+###
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/books
+Accept: application/json
+
+###
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/books/slug/the-midnight-library
+Accept: application/json
+
+###
+
+POST {{GoodReadsAPI.Server_HostAddress}}/api/books
+Content-Type: application/json
+Accept: application/json
+
+{
+  "id": "book-http-test-001",
+  "slug": "book-http-test-001",
+  "title": { "en": "HTTP Test Book", "es": "Libro de prueba HTTP" },
+  "subtitle": { "en": "Created from .http file", "es": "Creado desde archivo .http" },
+  "authorId": "author-http-test",
+  "year": 2026,
+  "pageCount": 280,
+  "format": { "en": "Paperback", "es": "Tapa blanda" },
+  "rating": 4.1,
+  "ratingCount": { "en": "10 ratings", "es": "10 valoraciones" },
+  "description": {
+    "en": "This row validates backend write path to Supabase.",
+    "es": "Esta fila valida la ruta de escritura del backend a Supabase."
+  },
+  "shortDescription": { "en": "Persistence test", "es": "Prueba de persistencia" },
+  "quote": { "en": "Write once, verify twice.", "es": "Escribe una vez, verifica dos." },
+  "cover": "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&auto=format&fit=crop&q=60",
+  "backdrop": "https://images.unsplash.com/photo-1507842217343-583bb7270b66?w=1200&auto=format&fit=crop&q=60",
+  "genres": ["Testing", "Engineering"],
+  "mood": { "en": "Confident", "es": "Confiado" },
+  "accent": "#4A6FA5",
+  "shelves": { "en": "General", "es": "General" },
+  "friendsReading": 1,
+  "featured": false,
+  "trending": false,
+  "editorPick": false
+}
+
+###
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/books/book-http-test-001
+Accept: application/json
+
+###
+
+DELETE {{GoodReadsAPI.Server_HostAddress}}/api/books/book-http-test-001
+Accept: application/json
+
+###
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/users?query=amelia
+Accept: application/json
+
+###
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/users/user-amelia/following
+Accept: application/json
+
+###
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/users/user-amelia/library
+Accept: application/json
+
+###
+
+POST {{GoodReadsAPI.Server_HostAddress}}/api/users/user-dorian/follow
+Authorization: Bearer {{SupabaseAccessToken}}
+X-User-Id: user-amelia
+Accept: application/json
+
+###
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/me/follow-requests
+Authorization: Bearer {{SupabaseAccessToken}}
+X-User-Id: user-dorian
+Accept: application/json
+
+###
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/me/library
+Authorization: Bearer {{SupabaseAccessToken}}
+X-User-Id: user-amelia
+Accept: application/json
+
+###
+
+PUT {{GoodReadsAPI.Server_HostAddress}}/api/me/profile
+Authorization: Bearer {{SupabaseAccessToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "locale": "es",
+  "name": "Mi nombre visible",
+  "username": "miusuario",
+  "email": "mail@example.com",
+  "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=400&q=80",
+  "banner": "https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=1600&q=80",
+  "role": "Lectora",
+  "bio": "Mi bio corta",
+  "location": "",
+  "website": "",
+  "profileVisibility": "public"
+}
+
+###
+
+PUT {{GoodReadsAPI.Server_HostAddress}}/api/me/library/books/book-quiet-index/favorite
+Authorization: Bearer {{SupabaseAccessToken}}
+X-User-Id: user-amelia
+Content-Type: application/json
+Accept: application/json
+
+{
+  "isFavorite": true
+}
+
+###
+
+PUT {{GoodReadsAPI.Server_HostAddress}}/api/me/library/books/book-quiet-index/shelf
+Authorization: Bearer {{SupabaseAccessToken}}
+X-User-Id: user-amelia
+Content-Type: application/json
+Accept: application/json
+
+{
+  "shelfStatus": "currently-reading"
+}
+
+###
+
+PUT {{GoodReadsAPI.Server_HostAddress}}/api/me/library/books/book-quiet-index/progress
+Authorization: Bearer {{SupabaseAccessToken}}
+X-User-Id: user-amelia
+Content-Type: application/json
+Accept: application/json
+
+{
+  "progress": 47
+}
+
+###
+
+GET {{GoodReadsAPI.Server_HostAddress}}/api/me/library/favorites/following
+Authorization: Bearer {{SupabaseAccessToken}}
+X-User-Id: user-amelia
 Accept: application/json
 
 ###

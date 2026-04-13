@@ -1,4 +1,4 @@
-import {
+﻿import {
   createContext,
   useCallback,
   useContext,
@@ -33,6 +33,7 @@ const LibraryContext = createContext<LibraryContextValue | null>(null);
 
 export function LibraryProvider({ children }: PropsWithChildren) {
   const { currentUser } = useAuth();
+  const currentUserId = currentUser?.id ?? null;
   const { showToast } = useToast();
   const [libraryStateByUser, setLibraryStateByUser] = useState<
     Record<string, UserLibraryState>
@@ -112,7 +113,86 @@ export function LibraryProvider({ children }: PropsWithChildren) {
     }));
   };
 
+  const replaceActiveState = useCallback(
+    (nextState: UserLibraryState) => {
+      if (!currentUser) {
+        return;
+      }
+
+      setLibraryStateByUser((currentStateByUser) => ({
+        ...currentStateByUser,
+        [currentUser.id]: nextState,
+      }));
+    },
+    [currentUser],
+  );
+
+  const refreshLibraryFromBackend = useCallback(async () => {
+    if (!currentUser || !libraryClient.isBackendEnabled()) {
+      return;
+    }
+
+    try {
+      const remoteState = await libraryClient.fetchForUser(currentUser.id);
+      replaceActiveState(remoteState);
+    } catch (caughtError) {
+      reportError(caughtError, { scope: 'library.remoteSync' });
+      setError('We could not sync the latest library data from backend.');
+    }
+  }, [currentUser, replaceActiveState]);
+
+  useEffect(() => {
+    if (status !== 'ready' || !currentUserId || !libraryClient.isBackendEnabled()) {
+      return;
+    }
+
+    void refreshLibraryFromBackend();
+  }, [currentUserId, refreshLibraryFromBackend, status]);
+
   const setShelf = (bookId: string, targetShelf: ShelfStatus) => {
+    if (!currentUser) {
+      return;
+    }
+
+    if (libraryClient.isBackendEnabled()) {
+      void (async () => {
+        try {
+          const nextState = await libraryClient.setShelf(currentUser.id, bookId, targetShelf);
+          replaceActiveState(nextState);
+
+          showToast(
+            {
+              en:
+                targetShelf === 'want-to-read'
+                  ? 'Saved to Want to Read.'
+                  : targetShelf === 'currently-reading'
+                    ? 'Moved to Currently Reading.'
+                    : 'Marked as Read.',
+              es:
+                targetShelf === 'want-to-read'
+                  ? 'Guardado en Quiero leer.'
+                  : targetShelf === 'currently-reading'
+                    ? 'Movido a Leyendo ahora.'
+                    : 'Marcado como Leido.',
+            },
+            'success',
+          );
+          trackEvent('library_shelf_updated', { bookId, shelf: targetShelf });
+        } catch (caughtError) {
+          reportError(caughtError, { scope: 'library.setShelf', bookId, shelf: targetShelf });
+          showToast(
+            {
+              en: 'Could not update shelf right now.',
+              es: 'No se pudo actualizar el estante en este momento.',
+            },
+            'warning',
+          );
+        }
+      })();
+
+      return;
+    }
+
     updateActiveState((currentState) => {
       const nextShelves: ShelfMap = {
         'want-to-read': currentState.shelves['want-to-read'].filter((id) => id !== bookId),
@@ -174,7 +254,40 @@ export function LibraryProvider({ children }: PropsWithChildren) {
   };
 
   const toggleFavorite = (bookId: string) => {
+    if (!currentUser) {
+      return;
+    }
+
     const willFavorite = !activeState.favorites.includes(bookId);
+
+    if (libraryClient.isBackendEnabled()) {
+      void (async () => {
+        try {
+          const nextState = await libraryClient.setFavorite(currentUser.id, bookId, willFavorite);
+          replaceActiveState(nextState);
+
+          showToast(
+            willFavorite
+              ? { en: 'Added to favorites.', es: 'Agregado a favoritos.' }
+              : { en: 'Removed from favorites.', es: 'Quitado de favoritos.' },
+            'info',
+          );
+          trackEvent('library_favorite_toggled', { bookId, favorite: willFavorite });
+        } catch (caughtError) {
+          reportError(caughtError, { scope: 'library.toggleFavorite', bookId, favorite: willFavorite });
+          showToast(
+            {
+              en: 'Could not update favorite state right now.',
+              es: 'No se pudo actualizar favoritos en este momento.',
+            },
+            'warning',
+          );
+        }
+      })();
+
+      return;
+    }
+
     updateActiveState((currentState) => ({
       ...currentState,
       favorites: currentState.favorites.includes(bookId)
@@ -192,7 +305,43 @@ export function LibraryProvider({ children }: PropsWithChildren) {
   };
 
   const updateProgress = (bookId: string, progress: number) => {
+    if (!currentUser) {
+      return;
+    }
+
     const nextValue = Math.min(100, Math.max(0, progress));
+
+    if (libraryClient.isBackendEnabled()) {
+      void (async () => {
+        try {
+          const nextState = await libraryClient.updateProgress(currentUser.id, bookId, nextValue);
+          replaceActiveState(nextState);
+
+          if (nextValue === 100) {
+            showToast(
+              {
+                en: 'Reading progress completed.',
+                es: 'Progreso de lectura completado.',
+              },
+              'success',
+            );
+          }
+
+          trackEvent('library_progress_updated', { bookId, progress: nextValue });
+        } catch (caughtError) {
+          reportError(caughtError, { scope: 'library.updateProgress', bookId, progress: nextValue });
+          showToast(
+            {
+              en: 'Could not update reading progress right now.',
+              es: 'No se pudo actualizar el progreso de lectura en este momento.',
+            },
+            'warning',
+          );
+        }
+      })();
+
+      return;
+    }
 
     updateActiveState((currentState) => {
       const nextShelves = currentState.shelves['currently-reading'].includes(bookId)
@@ -273,3 +422,4 @@ export const useLibrary = () => {
 
   return context;
 };
+

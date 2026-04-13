@@ -72,6 +72,11 @@ Accept: application/json
 
 ###
 
+GET {{GoodReadsAPI.Server_HostAddress}}/api/users/user-amelia/library
+Accept: application/json
+
+###
+
 POST {{GoodReadsAPI.Server_HostAddress}}/api/users/user-dorian/follow
 Authorization: Bearer {{SupabaseAccessToken}}
 X-User-Id: user-amelia

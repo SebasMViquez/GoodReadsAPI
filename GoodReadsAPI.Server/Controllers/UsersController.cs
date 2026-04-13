@@ -11,7 +11,8 @@ namespace GoodReadsAPI.Server.Controllers;
 [Route("api/users")]
 public sealed class UsersController(
     IUserService userService,
-    ISocialGraphService socialGraphService)
+    ISocialGraphService socialGraphService,
+    IUserLibraryService userLibraryService)
     : ControllerBase
 {
     [HttpGet]
@@ -59,6 +60,16 @@ public sealed class UsersController(
     {
         var following = await socialGraphService.GetFollowingAsync(userId, cancellationToken);
         return Ok(following.Select(UserResponse.FromDomain).ToArray());
+    }
+
+    [HttpGet("{userId}/library")]
+    [ProducesResponseType(typeof(UserLibraryStateResponse), StatusCodes.Status200OK)]
+    public async Task<ActionResult<UserLibraryStateResponse>> GetLibrary(
+        string userId,
+        CancellationToken cancellationToken)
+    {
+        var entries = await userLibraryService.GetLibraryAsync(userId, cancellationToken);
+        return Ok(UserLibraryStateResponse.FromEntries(entries));
     }
 
     [HttpPost("{targetUserId}/follow")]

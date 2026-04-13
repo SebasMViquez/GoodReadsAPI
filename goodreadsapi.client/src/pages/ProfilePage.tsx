@@ -24,6 +24,9 @@ import { useAuth } from '@/context/AuthContext';
 import { useLanguage } from '@/context/LanguageContext';
 import { useLibrary } from '@/context/LibraryContext';
 import { getAuthorById, getBooksByIds, getBooksFromProgress } from '@/services/api/catalog';
+import { libraryClient } from '@/services/api/libraryClient';
+import { reportError } from '@/services/monitoring/reporting';
+import type { UserLibraryState } from '@/services/api/mock/libraryState';
 import { localizeBook, localizeUser } from '@/i18n/localize';
 import { getGenreLabel } from '@/i18n/ui';
 
@@ -121,8 +124,56 @@ export function ProfilePage() {
   const [tab, setTab] = useState<ProfileTab>('activity');
   const [followersQuery, setFollowersQuery] = useState('');
   const [followingQuery, setFollowingQuery] = useState('');
+  const [routeLibraryState, setRouteLibraryState] = useState<UserLibraryState | null>(null);
+  const [routeLibraryStatus, setRouteLibraryStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const isOwnProfile = currentUser?.username === username || profile?.username === username;
   const routeProfile = isOwnProfile ? profile ?? currentUser : getUserByUsername(username);
+  const routeProfileId = routeProfile?.id ?? null;
+  const routeProfileVisibility = routeProfile?.profileVisibility ?? 'public';
+
+  useEffect(() => {
+    if (!routeProfileId || isOwnProfile || !libraryClient.isBackendEnabled()) {
+      setRouteLibraryState(null);
+      setRouteLibraryStatus('idle');
+      return;
+    }
+
+    if (routeProfileVisibility === 'private') {
+      setRouteLibraryState(null);
+      setRouteLibraryStatus('idle');
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadRouteLibrary = async () => {
+      setRouteLibraryStatus('loading');
+
+      try {
+        const nextRouteLibrary = await libraryClient.fetchForProfile(routeProfileId, currentUser?.id ?? null);
+        if (cancelled) {
+          return;
+        }
+
+        setRouteLibraryState(nextRouteLibrary);
+        setRouteLibraryStatus('ready');
+      } catch (caughtError) {
+        if (cancelled) {
+          return;
+        }
+
+        reportError(caughtError, { scope: 'profile.library.fetch', targetUserId: routeProfileId });
+        setRouteLibraryStatus('error');
+        setRouteLibraryState(null);
+      }
+    };
+
+    void loadRouteLibrary();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUser?.id, isOwnProfile, routeProfileId, routeProfileVisibility]);
 
   if (!routeProfile) {
     return (
@@ -146,10 +197,25 @@ export function ProfilePage() {
   }
 
   const localizedProfile = localizeUser(routeProfile, locale);
-  const favoriteBooks = getBooksByIds(routeProfile.favoriteBooks);
-  const wantToReadBooks = getBooksByIds(routeProfile.wantToRead);
-  const readBooks = getBooksByIds(routeProfile.read);
-  const currentlyReading = getBooksFromProgress(routeProfile.currentlyReading);
+  const effectiveFavoriteBookIds =
+    !isOwnProfile && routeLibraryState ? routeLibraryState.favorites : routeProfile.favoriteBooks;
+  const effectiveWantToReadBookIds =
+    !isOwnProfile && routeLibraryState
+      ? routeLibraryState.shelves['want-to-read']
+      : routeProfile.wantToRead;
+  const effectiveReadBookIds =
+    !isOwnProfile && routeLibraryState ? routeLibraryState.shelves.read : routeProfile.read;
+  const effectiveCurrentlyReading =
+    !isOwnProfile && routeLibraryState
+      ? routeLibraryState.shelves['currently-reading'].map((bookId) => ({
+          bookId,
+          progress: routeLibraryState.progressMap[bookId] ?? 0,
+        }))
+      : routeProfile.currentlyReading;
+  const favoriteBooks = getBooksByIds(effectiveFavoriteBookIds);
+  const wantToReadBooks = getBooksByIds(effectiveWantToReadBookIds);
+  const readBooks = getBooksByIds(effectiveReadBookIds);
+  const currentlyReading = getBooksFromProgress(effectiveCurrentlyReading);
   const reviews = getReviewsForUser(routeProfile.id);
   const profileActivity = activityFeed.filter((activity) => activity.userId === routeProfile.id);
   const followers = getFollowersForUser(routeProfile.id);
@@ -443,7 +509,9 @@ export function ProfilePage() {
                         ))
                       ) : (
                         <div className="profile-inline-empty">
-                          {t({ en: 'Nothing in progress right now.', es: 'No hay nada en progreso ahora mismo.' })}
+                          {routeLibraryStatus === 'loading' && !isOwnProfile
+                            ? t({ en: 'Loading shelf activity...', es: 'Cargando actividad de estantes...' })
+                            : t({ en: 'Nothing in progress right now.', es: 'No hay nada en progreso ahora mismo.' })}
                         </div>
                       )}
                     </div>
@@ -463,7 +531,9 @@ export function ProfilePage() {
                         ))
                       ) : (
                         <div className="profile-inline-empty">
-                          {t({ en: 'No future reads saved yet.', es: 'Todavia no hay futuras lecturas guardadas.' })}
+                          {routeLibraryStatus === 'loading' && !isOwnProfile
+                            ? t({ en: 'Loading shelf activity...', es: 'Cargando actividad de estantes...' })
+                            : t({ en: 'No future reads saved yet.', es: 'Todavia no hay futuras lecturas guardadas.' })}
                         </div>
                       )}
                     </div>
@@ -483,7 +553,9 @@ export function ProfilePage() {
                         ))
                       ) : (
                         <div className="profile-inline-empty">
-                          {t({ en: 'No finished books in this visible shelf.', es: 'No hay libros terminados en este estante visible.' })}
+                          {routeLibraryStatus === 'loading' && !isOwnProfile
+                            ? t({ en: 'Loading shelf activity...', es: 'Cargando actividad de estantes...' })
+                            : t({ en: 'No finished books in this visible shelf.', es: 'No hay libros terminados en este estante visible.' })}
                         </div>
                       )}
                     </div>

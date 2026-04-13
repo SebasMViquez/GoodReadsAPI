@@ -16,6 +16,7 @@ export interface LibraryClient {
   persist: (state: Record<string, UserLibraryState>) => Promise<void>;
   isBackendEnabled: () => boolean;
   fetchForUser: (userId: string) => Promise<UserLibraryState>;
+  fetchForProfile: (targetUserId: string, viewerUserId?: string | null) => Promise<UserLibraryState>;
   setShelf: (userId: string, bookId: string, shelf: ShelfStatus) => Promise<UserLibraryState>;
   setFavorite: (userId: string, bookId: string, isFavorite: boolean) => Promise<UserLibraryState>;
   updateProgress: (userId: string, bookId: string, progress: number) => Promise<UserLibraryState>;
@@ -27,11 +28,13 @@ interface RemoteLibraryStateResponse {
   progressMap: Record<string, number>;
 }
 
-const createHeaders = (userId: string, hasBody = false): HeadersInit => {
+const createHeaders = (userId?: string | null, hasBody = false): HeadersInit => {
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    'X-User-Id': userId,
   };
+  if (userId) {
+    headers['X-User-Id'] = userId;
+  }
   const accessToken = supabaseAuth.getAccessToken();
 
   if (accessToken) {
@@ -68,6 +71,22 @@ const fetchRemoteLibrary = async (userId: string): Promise<UserLibraryState> => 
   return normalizeRemoteLibraryState(payload);
 };
 
+const fetchRemoteProfileLibrary = async (
+  targetUserId: string,
+  viewerUserId?: string | null,
+): Promise<UserLibraryState> => {
+  const response = await fetch(buildApiUrl(`/api/users/${encodeURIComponent(targetUserId)}/library`), {
+    headers: createHeaders(viewerUserId),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch profile library (${response.status}).`);
+  }
+
+  const payload = (await response.json()) as RemoteLibraryStateResponse;
+  return normalizeRemoteLibraryState(payload);
+};
+
 const mutateLibraryAndReload = async (
   userId: string,
   path: string,
@@ -97,6 +116,7 @@ export const libraryClient: LibraryClient = {
   },
   isBackendEnabled: isBackendApiEnabled,
   fetchForUser: fetchRemoteLibrary,
+  fetchForProfile: fetchRemoteProfileLibrary,
   setShelf(userId, bookId, shelf) {
     return mutateLibraryAndReload(userId, `/api/me/library/books/${encodeURIComponent(bookId)}/shelf`, {
       shelfStatus: shelf,

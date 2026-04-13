@@ -556,3 +556,28 @@
 ### Notes
 
 - Fixes the case where private-profile follow requests were persisted but not visible/manageable in Notification UI.
+
+## 2026-04-12 (Profile shelves for other users via backend library endpoint)
+
+### Changed
+
+- `GoodReadsAPI.Server/Controllers/UsersController.cs`
+  - Added `GET /api/users/{userId}/library` to expose a user's shelf state as `UserLibraryStateResponse`.
+- `goodreadsapi.client/src/services/api/libraryClient.ts`
+  - Added `fetchForProfile(targetUserId, viewerUserId?)`.
+  - Header builder now supports optional viewer id (for anonymous/public profile reads).
+- `goodreadsapi.client/src/pages/ProfilePage.tsx`
+  - When visiting another user's profile (non-own), loads shelf data from backend and maps it into:
+    - `want-to-read`
+    - `currently-reading` (+ progress)
+    - `read`
+    - favorites gallery
+  - Added loading copy while remote shelf data is being fetched.
+- API docs/examples updated:
+  - `GoodReadsAPI.Server/README.md`
+  - `docs/BACKEND_ENDPOINT_MATRIX.md`
+  - `GoodReadsAPI.Server/GoodReadsAPI.Server.http`
+
+### Notes
+
+- This fixes the inconsistency where reviews were visible across profiles but shelves stayed empty for other users despite existing library activity in DB.

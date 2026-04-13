@@ -12,6 +12,7 @@ ASP.NET Core Web API for GoodReads, connected to Supabase (PostgREST) for persis
   - `GET /api/users/{username}`
   - `GET /api/users/{userId}/followers`
   - `GET /api/users/{userId}/following`
+  - `GET /api/users/{userId}/library`
   - `POST /api/users/{targetUserId}/follow`
   - `DELETE /api/users/{targetUserId}/follow`
 - Me/library social endpoints ready:

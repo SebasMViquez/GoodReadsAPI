@@ -689,3 +689,34 @@
   - Success
 - Output summary:
   - TypeScript project references compiled with no errors.
+
+## 2026-04-12 - Validation after profile shelves sync for other users
+
+### Attempt 1
+
+- Command:
+  - `$env:DOTNET_CLI_HOME='c:\.NET\WEB\GoodReadsAPI\.dotnet'; dotnet build GoodReadsAPI.Server/GoodReadsAPI.Server.csproj --no-restore -o c:\.NET\WEB\GoodReadsAPI\.artifacts\server-build-profile-shelves-other-users-fix`
+- Result:
+  - Success
+- Output summary:
+  - `0 Advertencia(s)`
+  - `0 Errores`
+  - Build output generated in `.artifacts/server-build-profile-shelves-other-users-fix`.
+
+### Attempt 2
+
+- Command:
+  - `npm.cmd run lint`
+- Result:
+  - Success
+- Output summary:
+  - ESLint completed with no errors.
+
+### Attempt 3
+
+- Command:
+  - `npx.cmd tsc -b`
+- Result:
+  - Success
+- Output summary:
+  - TypeScript project references compiled with no errors.

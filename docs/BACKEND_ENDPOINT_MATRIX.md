@@ -28,6 +28,7 @@ Este documento traduce el flujo actual del frontend a contratos API backend.
   - `GET /api/users/{username}`
   - `GET /api/users/{userId}/followers`
   - `GET /api/users/{userId}/following`
+  - `GET /api/users/{userId}/library`
   - `POST /api/users/{targetUserId}/follow` (`[Authorize]`)
   - `DELETE /api/users/{targetUserId}/follow` (`[Authorize]`)
   - `PUT /api/me/profile` (`[Authorize]`)
@@ -66,6 +67,7 @@ Sugerencia de producto:
 - `GET /api/users/{username}`
 - `GET /api/users/{userId}/followers`
 - `GET /api/users/{userId}/following`
+- `GET /api/users/{userId}/library`
 
 ### Profile (current user)
 

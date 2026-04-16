@@ -1,0 +1,28 @@
+[
+  {
+    "id": "tp-get-books",
+    "title": "Get books list",
+    "description": "Verify that GET /api/books returns 200 and a list of books",
+    "steps": [
+      {
+        "type": "http",
+        "method": "GET",
+        "url": "http://localhost:5070/api/books",
+        "expect": { "status": 200 }
+      }
+    ]
+  },
+  {
+    "id": "tp-health",
+    "title": "Health check",
+    "description": "Verify health endpoint responds 200",
+    "steps": [
+      {
+        "type": "http",
+        "method": "GET",
+        "url": "http://localhost:5070/api/health",
+        "expect": { "status": 200 }
+      }
+    ]
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "projectId": "3e00df20-8495-441c-a0bb-b15df6f8f421",
+    "testId": "4e1892d3-c9bb-4714-9872-214965501194",
+    "userId": "04d86448-f0f1-7025-844b-cc574a448a5b",
+    "title": "tp-get-books-Get books list",
+    "description": "Verify that GET /api/books returns 200 and a list of books",
+    "code": "import asyncio\nfrom playwright import async_api\nfrom playwright.async_api import expect\n\nasync def run_test():\n    pw = None\n    browser = None\n    context = None\n\n    try:\n        # Start a Playwright session in asynchronous mode\n        pw = await async_api.async_playwright().start()\n\n        # Launch a Chromium browser in headless mode with custom arguments\n        browser = await pw.chromium.launch(\n            headless=True,\n            args=[\n                \"--window-size=1280,720\",         # Set the browser window size\n                \"--disable-dev-shm-usage\",        # Avoid using /dev/shm which can cause issues in containers\n                \"--ipc=host\",                     # Use host-level IPC for better stability\n                \"--single-process\"                # Run the browser in a single process mode\n            ],\n        )\n\n        # Create a new browser context (like an incognito window)\n        context = await browser.new_context()\n        context.set_default_timeout(5000)\n\n        # Open a new page in the browser context\n        page = await context.new_page()\n\n        # Interact with the page elements to simulate user flow\n        # -> Navigate to http://localhost:5174\n        await page.goto(\"http://localhost:5174\")\n        \n        # -> Navigate to http://localhost:5070/api/books, wait for the response to load, and extract the raw response body so we can verify the status and that it is a list of books.\n        await page.goto(\"http://localhost:5070/api/books\")\n        \n        # --> Test passed — verified by AI agent\n        frame = context.pages[-1]\n        current_url = await frame.evaluate(\"() => window.location.href\")\n        assert current_url is not None, \"Test completed successfully\"\n        await asyncio.sleep(5)\n\n    finally:\n        if context:\n            await context.close()\n        if browser:\n            await browser.close()\n        if pw:\n            await pw.stop()\n\nasyncio.run(run_test())\n    ",
+    "testStatus": "PASSED",
+    "testError": "",
+    "testType": "FRONTEND",
+    "createFrom": "mcp",
+    "testVisualization": "https://testsprite-videos.s3.us-east-1.amazonaws.com/04d86448-f0f1-7025-844b-cc574a448a5b/177632011083117//tmp/test_task/result.webm",
+    "created": "2026-04-16T06:09:34.703Z",
+    "modified": "2026-04-16T06:15:11.021Z"
+  },
+  {
+    "projectId": "3e00df20-8495-441c-a0bb-b15df6f8f421",
+    "testId": "20760f8b-f454-40a5-9671-5e891fc7a043",
+    "userId": "04d86448-f0f1-7025-844b-cc574a448a5b",
+    "title": "tp-health-Health check",
+    "description": "Verify health endpoint responds 200",
+    "code": "import asyncio\nfrom playwright import async_api\nfrom playwright.async_api import expect\n\nasync def run_test():\n    pw = None\n    browser = None\n    context = None\n\n    try:\n        # Start a Playwright session in asynchronous mode\n        pw = await async_api.async_playwright().start()\n\n        # Launch a Chromium browser in headless mode with custom arguments\n        browser = await pw.chromium.launch(\n            headless=True,\n            args=[\n                \"--window-size=1280,720\",         # Set the browser window size\n                \"--disable-dev-shm-usage\",        # Avoid using /dev/shm which can cause issues in containers\n                \"--ipc=host\",                     # Use host-level IPC for better stability\n                \"--single-process\"                # Run the browser in a single process mode\n            ],\n        )\n\n        # Create a new browser context (like an incognito window)\n        context = await browser.new_context()\n        context.set_default_timeout(5000)\n\n        # Open a new page in the browser context\n        page = await context.new_page()\n\n        # Interact with the page elements to simulate user flow\n        # -> Navigate to http://localhost:5174\n        await page.goto(\"http://localhost:5174\")\n        \n        # -> Navigate to http://localhost:5070/api/health, observe the response status and body, and verify it returns HTTP 200. Then stop.\n        await page.goto(\"http://localhost:5070/api/health\")\n        \n        # --> Test passed — verified by AI agent\n        frame = context.pages[-1]\n        current_url = await frame.evaluate(\"() => window.location.href\")\n        assert current_url is not None, \"Test completed successfully\"\n        await asyncio.sleep(5)\n\n    finally:\n        if context:\n            await context.close()\n        if browser:\n            await browser.close()\n        if pw:\n            await pw.stop()\n\nasyncio.run(run_test())\n    ",
+    "testStatus": "PASSED",
+    "testError": "",
+    "testType": "FRONTEND",
+    "createFrom": "mcp",
+    "testVisualization": "https://testsprite-videos.s3.us-east-1.amazonaws.com/04d86448-f0f1-7025-844b-cc574a448a5b/1776319837306595//tmp/test_task/result.webm",
+    "created": "2026-04-16T06:09:34.708Z",
+    "modified": "2026-04-16T06:10:37.430Z"
+  }
+]

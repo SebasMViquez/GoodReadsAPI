@@ -1,0 +1,20 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5174",
+  "loginUser": "abi@yopmail.com",
+  "loginPassword": "Prueba1234@",
+  "executionArgs": {
+    "projectName": "GoodReadsAPI",
+    "projectPath": "C:\\.NET\\WEB\\GoodReadsAPI",
+    "testIds": [],
+    "additionalInstruction": "Run backend tests against http://localhost:5070",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-U_HcrpW7CS0IG1RYSUvi1mNDl1KfWDbbY2Efwk7Yc0xl30YbUejSX8mTJ3XKRbrAlhMsaYM0iMKk-vVHq-8vVUQ00jHJhck8MAeQ6hMutBgvvCQVznpqYN9tJxqHPhcEQH4"
+    }
+  },
+  "serverPort": 52373,
+  "proxy": "http://81e5c687-1c3c-4769-89c4-2a58c0b58933:YqIDyio2uKhWYs1CVIZwMiVkpFz8rTEV@tun.testsprite.com:8080"
+}

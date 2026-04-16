@@ -1,0 +1,122 @@
+version: "2"
+
+type: frontend
+
+tech_stack:
+  - language: TypeScript
+  - framework: React
+  - ui_library: Vite + JSX (no specific UI framework detected)
+  - other: Vitest, Vite, React Router
+
+routes:
+  - path: /login
+    file: goodreadsapi.client/src/pages/LoginPage.tsx
+    auth_required: false
+    description: Login page (email/password)
+  - path: /register
+    file: goodreadsapi.client/src/pages/RegisterPage.tsx
+    auth_required: false
+    description: User registration page
+  - path: /
+    file: goodreadsapi.client/src/pages/HomePage.tsx
+    auth_required: false
+    description: Landing / feed
+  - path: /books
+    file: goodreadsapi.client/src/pages/BooksLabPage.tsx
+    auth_required: false
+    description: Books listing / lab
+  - path: /books/:slug
+    file: goodreadsapi.client/src/pages/BookDetailsPage.tsx
+    auth_required: false
+    description: Book details view
+  - path: /library
+    file: goodreadsapi.client/src/pages/LibraryPage.tsx
+    auth_required: true
+    description: User library and shelves
+  - path: /profile/:username
+    file: goodreadsapi.client/src/pages/ProfilePage.tsx
+    auth_required: false
+    description: Public profile pages
+  - path: /search
+    file: goodreadsapi.client/src/pages/SearchPage.tsx
+    auth_required: false
+    description: Search UI
+
+features:
+  - name: User Login
+    description: Login with email and password credentials
+    files:
+      - goodreadsapi.client/src/pages/LoginPage.tsx
+      - goodreadsapi.client/src/context/AuthContext.tsx
+    entry_route: /login
+    user_interactions:
+      - Fill email input field
+      - Fill password input field
+      - Click Login button to submit
+      - See error message on invalid credentials
+    api_calls:
+      - method: POST
+        endpoint: /api/auth/login (handled by Supabase/auth layer)
+    auth_required: false
+
+  - name: Search and Book Details
+    description: Search for books and view details
+    files:
+      - goodreadsapi.client/src/pages/SearchPage.tsx
+      - goodreadsapi.client/src/pages/BookDetailsPage.tsx
+    entry_route: /search
+    user_interactions:
+      - Type a query in search input
+      - Submit search
+      - Click a result to open book details
+    api_calls:
+      - method: GET
+        endpoint: /api/books?query=...
+      - method: GET
+        endpoint: /api/books/slug/{slug}
+    auth_required: false
+
+  - name: Library Management
+    description: Add books to shelves, set favorite, update progress
+    files:
+      - goodreadsapi.client/src/pages/LibraryPage.tsx
+      - goodreadsapi.client/src/components/book/LibraryEntry.tsx
+    entry_route: /library
+    user_interactions:
+      - Click "Add to shelf" or change shelf status
+      - Toggle favorite
+      - Update reading progress
+    api_calls:
+      - method: GET
+        endpoint: /api/me/library
+      - method: PUT
+        endpoint: /api/me/library/books/{bookId}/shelf
+      - method: PUT
+        endpoint: /api/me/library/books/{bookId}/favorite
+      - method: PUT
+        endpoint: /api/me/library/books/{bookId}/progress
+    auth_required: true
+
+  - name: Follow / Social Interactions
+    description: Follow users and view following favorites
+    files:
+      - goodreadsapi.client/src/pages/ProfilePage.tsx
+      - goodreadsapi.client/src/pages/ReadersPage.tsx
+    entry_route: /profile/:username
+    user_interactions:
+      - Click Follow button on a profile
+      - View followers/following lists
+    api_calls:
+      - method: POST
+        endpoint: /api/users/{targetUserId}/follow
+      - method: DELETE
+        endpoint: /api/users/{targetUserId}/follow
+    auth_required: true
+
+known_limitations:
+  - issue: Some auth flows depend on Supabase and external services
+    location: Configuration/SupabaseAuthOptions.cs and client AuthContext
+    impact: Tests that require real authentication need local supabase or mocked auth
+  - issue: Frontend tests assume local dev server at http://localhost:5173
+    location: testsprite_tests/tmp/config.json
+    impact: Test execution requires the dev server running

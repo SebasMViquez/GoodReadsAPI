@@ -1,0 +1,221 @@
+version: "2"
+type: frontend
+tech_stack:
+  - React 18.3.1
+  - React Router 6.30.1
+  - Vite 5.4.14
+  - TypeScript
+  - Lucide React Icons
+  - Framer Motion
+  
+routes:
+  - path: /
+    file: src/pages/HomePage.tsx
+    auth_required: false
+    description: Home page with featured books, trending, and editorial sections
+  - path: /explore
+    file: src/pages/ExplorePage.tsx
+    auth_required: false
+    description: Book catalog exploration with filtering
+  - path: /books/:slug
+    file: src/pages/BookDetailsPage.tsx
+    auth_required: false
+    description: Book details, reviews, add to library, favorites, progress tracking
+  - path: /library
+    file: src/pages/LibraryPage.tsx
+    auth_required: true
+    description: User library with shelves (want-to-read, currently-reading, read)
+  - path: /search
+    file: src/pages/SearchPage.tsx
+    auth_required: false
+    description: Search books and readers
+  - path: /community
+    file: src/pages/CommunityPage.tsx
+    auth_required: true
+    description: Community feed and user interactions
+  - path: /readers
+    file: src/pages/ReadersPage.tsx
+    auth_required: false
+    description: Browse readers and profiles
+  - path: /profile
+    file: src/pages/ProfilePage.tsx
+    auth_required: true
+    description: User profile
+  - path: /login
+    file: src/pages/LoginPage.tsx
+    auth_required: false
+    description: Login page
+  - path: /register
+    file: src/pages/RegisterPage.tsx
+    auth_required: false
+    description: Register page
+  - path: /settings
+    file: src/pages/SettingsPage.tsx
+    auth_required: true
+    description: User settings
+
+features:
+  - name: Book Catalog Discovery
+    description: Browse and explore books from home or explore pages
+    files:
+      - src/pages/HomePage.tsx
+      - src/pages/ExplorePage.tsx
+      - src/components/book/BookCard.tsx
+      - src/services/api/catalog.ts
+    entry_route: /
+    user_interactions:
+      - User lands on home page
+      - User sees featured books and trending section
+      - User clicks on "Explore" link or button
+      - User sees book grid with book cards
+      - User scrolls through book list
+      - User clicks on a book card to view details
+    api_calls:
+      - method: GET
+        endpoint: /api/books
+        description: Fetch catalog of books with metadata
+      - method: GET
+        endpoint: /api/books/:slug
+        description: Fetch single book details
+
+  - name: View Book Details
+    description: Display book information, reviews, and interaction options
+    files:
+      - src/pages/BookDetailsPage.tsx
+      - src/components/review/ReviewCard.tsx
+      - src/services/api/catalog.ts
+    entry_route: /books/:slug
+    user_interactions:
+      - User views book title, cover, author, description
+      - User sees book rating and genres
+      - User views related books section
+      - User sees review section with existing reviews
+      - User can see options to add to library, set as favorite, update progress
+    api_calls:
+      - method: GET
+        endpoint: /api/books/:id
+        description: Get detailed book information
+      - method: GET
+        endpoint: /api/reviews/:bookId
+        description: Get reviews for the book
+
+  - name: Add Book to Library
+    description: Add books to library shelves (want-to-read, currently-reading, read)
+    files:
+      - src/pages/BookDetailsPage.tsx
+      - src/context/LibraryContext.ts
+      - src/services/api/libraryClient.ts
+    entry_route: /books/:slug
+    user_interactions:
+      - User clicks shelf dropdown selector on book details
+      - User selects shelf option (want-to-read, currently-reading, read)
+      - UI updates to show selected shelf
+      - User navigates to Library page
+      - User verifies book appears in correct shelf
+    api_calls:
+      - method: POST
+        endpoint: /api/me/library
+        description: Add book to user library
+      - method: PUT
+        endpoint: /api/me/library/:bookId
+        description: Update book shelf status
+
+  - name: View User Library
+    description: View personalized library with multiple shelves and filtering
+    files:
+      - src/pages/LibraryPage.tsx
+      - src/context/LibraryContext.ts
+      - src/components/book/BookCard.tsx
+    entry_route: /library
+    user_interactions:
+      - User navigates to Library page (protected)
+      - User sees tabs for shelves (currently-reading, want-to-read, read)
+      - User clicks on shelf tabs to switch between shelves
+      - User sees book cards in selected shelf
+      - User can sort by title, rating, or year
+      - User sees stats cards (currently reading, completed this year, etc)
+    api_calls:
+      - method: GET
+        endpoint: /api/me/library
+        description: Fetch user library with all shelves
+      - method: GET
+        endpoint: /api/me/profile
+        description: Get user profile with library data
+
+  - name: Mark Book as Favorite
+    description: Toggle favorite status on books
+    files:
+      - src/pages/BookDetailsPage.tsx
+      - src/components/book/BookCard.tsx
+      - src/context/LibraryContext.ts
+      - src/services/api/libraryClient.ts
+    entry_route: /books/:slug
+    user_interactions:
+      - User views book details page
+      - User sees heart icon (favorite button)
+      - User clicks heart icon to favorite book
+      - Heart icon changes color/appearance to indicate favorited
+      - User can click again to unfavorite
+      - User navigates to profile or library
+      - User verifies favorite status persists
+    api_calls:
+      - method: POST
+        endpoint: /api/me/favorites/:bookId
+        description: Add book to favorites
+      - method: DELETE
+        endpoint: /api/me/favorites/:bookId
+        description: Remove book from favorites
+
+  - name: Update Reading Progress
+    description: Track progress while reading a book
+    files:
+      - src/pages/BookDetailsPage.tsx
+      - src/context/LibraryContext.ts
+      - src/services/api/libraryClient.ts
+    entry_route: /books/:slug
+    user_interactions:
+      - User has book on "currently-reading" shelf
+      - User clicks progress input or slider on book details
+      - User enters percentage (0-100) or uses slider
+      - UI updates to show new progress
+      - User updates progress again to different value
+      - Progress change persists in UI
+      - User can verify progress on library page
+    api_calls:
+      - method: PUT
+        endpoint: /api/me/library/:bookId/progress
+        description: Update reading progress for a book
+
+  - name: User Authentication
+    description: Login and register user accounts
+    files:
+      - src/pages/LoginPage.tsx
+      - src/pages/RegisterPage.tsx
+      - src/context/AuthContext.ts
+      - src/services/api/authClient.ts
+    entry_route: /login
+    user_interactions:
+      - User navigates to login page
+      - User fills email input field
+      - User fills password input field
+      - User clicks "Log in" button
+      - User sees success message or error
+      - User is redirected to home or dashboard on success
+    api_calls:
+      - method: POST
+        endpoint: /api/auth/login
+        description: Authenticate user with credentials
+      - method: POST
+        endpoint: /api/auth/register
+        description: Create new user account
+
+known_limitations:
+  - issue: Backend API availability depends on running server
+    location: Services using API calls
+    impact: Tests may fail if backend server is not running
+  - issue: Mock data used for catalog in dev environment
+    location: src/services/api/catalog.ts
+    impact: Catalog data is static/mock, not from real database
+  - issue: Local storage persistence only in browser
+    location: src/services/storage/
+    impact: Data may not persist across browser sessions

@@ -1,0 +1,1369 @@
+[
+  {
+    "id": "TC001",
+    "title": "Register a new account and land on the home experience",
+    "description": "Verifies a new user can register with valid credentials and is redirected into the app upon success.",
+    "category": "User Authentication (Register & Login)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /register"
+      },
+      {
+        "type": "action",
+        "description": "Fill valid text into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique valid email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a password that meets the minimum requirements into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the home page"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "View library shelves and stats as an authenticated member",
+    "description": "Verifies an authenticated member can access the library, switch shelves, and see library stats rendered.",
+    "category": "View User Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "action",
+        "description": "Click the shelf tab for want-to-read"
+      },
+      {
+        "type": "action",
+        "description": "Click the shelf tab for read"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify library stats cards are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Log in with existing credentials and start an authenticated session",
+    "description": "Verifies a user can log in with valid credentials and is redirected into the app as an authenticated member.",
+    "category": "User Authentication (Register & Login)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the home page"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Open a book details page from Explore",
+    "description": "Verifies an anonymous visitor can open a book from Explore and land on a details view for that book.",
+    "category": "Book Catalog Discovery",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /explore"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card in the grid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the book details view is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "View essential book information on details page",
+    "description": "Verifies a visitor can view a book’s core information (title/author/cover/description) on the details page.",
+    "category": "View Book Details",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /explore"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card in the grid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the book title, author, cover, and description are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Update reading progress for a currently-reading book and see it in the library",
+    "description": "Verifies the user can set a valid progress percentage for a currently-reading book and see the updated progress reflected in the library shelf.",
+    "category": "Update Reading Progress",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore books"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card to open its details"
+      },
+      {
+        "type": "action",
+        "description": "Set the book shelf to currently-reading"
+      },
+      {
+        "type": "action",
+        "description": "Use the progress input or slider to set a valid percentage between 0 and 100"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "action",
+        "description": "Click the shelf tab for currently-reading"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the book shows a progress value in the currently-reading shelf"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Browse featured and trending books on home",
+    "description": "Verifies an anonymous visitor can load the home page and see featured and trending book sections populated.",
+    "category": "Book Catalog Discovery",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify featured books are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify trending books are displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Add a book to Want-to-read and verify it appears in Library",
+    "description": "Verifies an authenticated member can add a book to the want-to-read shelf from book details and see it in the Library shelf tab.",
+    "category": "Add Book to Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore the catalog"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card in the grid"
+      },
+      {
+        "type": "action",
+        "description": "Select the want-to-read shelf option"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected book appears in the want-to-read shelf"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Favorite a book from book details and see it on profile",
+    "description": "Verifies a user can favorite a book from its details page and see it listed as a favorite on their profile.",
+    "category": "Mark Book as Favorite",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore books"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card to open its details"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the favorite control to set the book as favorited"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the favorites section shows at least one favorited book"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Open Explore from Home and view book grid",
+    "description": "Verifies an anonymous visitor can navigate from the home page to Explore and see a grid of book cards.",
+    "category": "Book Catalog Discovery",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore the catalog"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a grid of book cards is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC011",
+    "title": "Community page requires authentication",
+    "description": "This test verifies that a logged-out visitor attempting to access the community page is redirected to login.",
+    "category": "Community Feed",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /community"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the login page"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC012",
+    "title": "Switch between shelves and see the selected shelf content area update",
+    "description": "Verifies the user can switch shelves and the book list area updates to reflect the selected shelf.",
+    "category": "View User Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "action",
+        "description": "Click the shelf tab for currently-reading"
+      },
+      {
+        "type": "action",
+        "description": "Click the shelf tab for want-to-read"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify book cards are displayed for the selected shelf"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC013",
+    "title": "Browse community feed as an authenticated member",
+    "description": "This test verifies that an authenticated member can open the community page and see a list of community posts displayed.",
+    "category": "Community Feed",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the community page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify community posts are displayed in the feed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC014",
+    "title": "Move a book from Want-to-read to Currently-reading and verify shelf change",
+    "description": "Verifies an authenticated member can change a book’s shelf from want-to-read to currently-reading and see it in the correct Library tab.",
+    "category": "Add Book to Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore the catalog"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card in the grid"
+      },
+      {
+        "type": "action",
+        "description": "Select the want-to-read shelf option"
+      },
+      {
+        "type": "action",
+        "description": "Select the currently-reading shelf option"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected book appears in the currently-reading shelf"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC015",
+    "title": "Unfavorite a book from book details and remove it from profile favorites",
+    "description": "Verifies a user can unfavorite a book and it no longer appears in their profile favorites.",
+    "category": "Mark Book as Favorite",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore books"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card to open its details"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the favorite control to set the book as favorited"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the favorite control again to set the book as not favorited"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the profile"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the favorites section is empty or the unfavorited book is not listed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC016",
+    "title": "Sort books within a shelf by title",
+    "description": "Verifies the user can sort a shelf by title and the list order updates accordingly.",
+    "category": "View User Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "action",
+        "description": "Click the shelf tab for want-to-read"
+      },
+      {
+        "type": "action",
+        "description": "Select title in the sort control"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the shelf list is sorted by title"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Change reading progress value and see the updated value reflected in the library",
+    "description": "Verifies the user can update progress multiple times and the latest value is shown in the library.",
+    "category": "Update Reading Progress",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore books"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card to open its details"
+      },
+      {
+        "type": "action",
+        "description": "Set the book shelf to currently-reading"
+      },
+      {
+        "type": "action",
+        "description": "Use the progress input or slider to set a valid percentage between 0 and 100"
+      },
+      {
+        "type": "action",
+        "description": "Use the progress input or slider to set a different valid percentage between 0 and 100"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the currently-reading shelf shows the updated progress value for the book"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "View rating and genres on book details",
+    "description": "Verifies a visitor can see rating and genre information for a book on the details page.",
+    "category": "View Book Details",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /explore"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card in the grid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the book rating and genres are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Follow a public profile from the reader profile page",
+    "description": "Verifies an authenticated member can follow a public reader and the follow state updates accordingly.",
+    "category": "Follow and Unfollow Users",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to browse readers"
+      },
+      {
+        "type": "action",
+        "description": "Click a reader in the list"
+      },
+      {
+        "type": "action",
+        "description": "Initiate a follow action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile shows the user is now following"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC020",
+    "title": "Like a community post",
+    "description": "This test verifies that an authenticated member can like a post and the like state is reflected in the UI.",
+    "category": "Community Feed",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the community page"
+      },
+      {
+        "type": "action",
+        "description": "Click the like control on the first post in the feed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the first post shows a liked state"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC021",
+    "title": "Add a comment to a community post",
+    "description": "This test verifies that an authenticated member can add a comment to a post and the comment appears under the post.",
+    "category": "Community Feed",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the community page"
+      },
+      {
+        "type": "action",
+        "description": "Click the comment control on the first post in the feed to open the comment input"
+      },
+      {
+        "type": "action",
+        "description": "Fill a unique comment into the comment field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the comment"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new comment is displayed under the post"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC022",
+    "title": "Scroll Explore to load additional books",
+    "description": "Verifies an anonymous visitor can scroll the Explore catalog and continue seeing book cards as they browse.",
+    "category": "Book Catalog Discovery",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /explore"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the bottom of the book grid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify additional book cards are displayed after scrolling"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC023",
+    "title": "Open a reader profile from the readers list",
+    "description": "Verifies a visitor can select a reader from the directory and open that reader’s profile page.",
+    "category": "Browse Readers & Profiles",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /readers"
+      },
+      {
+        "type": "action",
+        "description": "Click a reader in the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify reader profile information is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC024",
+    "title": "Sort books within a shelf by rating",
+    "description": "Verifies the user can sort a shelf by rating and the list order updates accordingly.",
+    "category": "View User Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "action",
+        "description": "Click the shelf tab for read"
+      },
+      {
+        "type": "action",
+        "description": "Select rating in the sort control"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the shelf list is sorted by rating"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC025",
+    "title": "Browse the readers directory",
+    "description": "Verifies an anonymous visitor can open the readers page and see a list of readers to discover.",
+    "category": "Browse Readers & Profiles",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /readers"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a list of readers is displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC026",
+    "title": "Scroll through the community feed to load more items",
+    "description": "This test verifies that an authenticated member can scroll the community feed and additional items are shown as the user scrolls.",
+    "category": "Community Feed",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the community page"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the bottom of the feed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify additional community items are displayed after scrolling"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC027",
+    "title": "Request to follow a private profile and see pending status",
+    "description": "Verifies an authenticated member can initiate a follow on a private profile and sees a pending follow request state.",
+    "category": "Follow and Unfollow Users",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to browse readers"
+      },
+      {
+        "type": "action",
+        "description": "Click a reader in the list"
+      },
+      {
+        "type": "action",
+        "description": "Initiate a follow action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a pending follow request state is shown"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC028",
+    "title": "Sort books within a shelf by year",
+    "description": "Verifies the user can sort a shelf by year and the list order updates accordingly.",
+    "category": "View User Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "action",
+        "description": "Click the shelf tab for currently-reading"
+      },
+      {
+        "type": "action",
+        "description": "Select year in the sort control"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the shelf list is sorted by year"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC029",
+    "title": "View a reader profile including public library sections",
+    "description": "Verifies a reader profile shows basic profile details and the reader’s public library sections when available.",
+    "category": "Browse Readers & Profiles",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /readers"
+      },
+      {
+        "type": "action",
+        "description": "Click a reader in the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify public library sections are displayed when available"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC030",
+    "title": "Browse related books from a book details page",
+    "description": "Verifies a visitor can view related books on a book details page and navigate to another book from that section.",
+    "category": "View Book Details",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /explore"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card in the grid"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the related books section"
+      },
+      {
+        "type": "action",
+        "description": "Click a related book"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the book details view updates to show another book"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC031",
+    "title": "Favorite state remains consistent after refresh of book details",
+    "description": "Verifies that favoriting a book reflects consistently on the book details page after a page refresh.",
+    "category": "Mark Book as Favorite",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore books"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card to open its details"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the favorite control to set the book as favorited"
+      },
+      {
+        "type": "action",
+        "description": "Refresh the page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the favorite control indicates the book is still favorited"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC032",
+    "title": "Unfollow a previously followed reader and revert follow state",
+    "description": "Verifies an authenticated member can unfollow a reader after following and the follow state reverts with counts updating.",
+    "category": "Follow and Unfollow Users",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to browse readers"
+      },
+      {
+        "type": "action",
+        "description": "Click a reader in the list"
+      },
+      {
+        "type": "action",
+        "description": "Initiate a follow action"
+      },
+      {
+        "type": "action",
+        "description": "Initiate an unfollow action"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the profile shows the user is not following and follower counts reflect the change"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC033",
+    "title": "Unlike a previously liked community post",
+    "description": "This test verifies that an authenticated member can toggle a like off and the UI reflects the unliked state.",
+    "category": "Community Feed",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation item to open the community page"
+      },
+      {
+        "type": "action",
+        "description": "Click the like control on the first post in the feed"
+      },
+      {
+        "type": "action",
+        "description": "Click the like control on the first post in the feed again"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the first post shows an unliked state"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC034",
+    "title": "View followers and following lists from a reader profile when available",
+    "description": "Verifies a reader profile can display follower and following lists when that information is available.",
+    "category": "Browse Readers & Profiles",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /readers"
+      },
+      {
+        "type": "action",
+        "description": "Click a reader in the list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify followers and following lists are displayed when available"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC035",
+    "title": "Prevent invalid reading progress outside the 0–100 range",
+    "description": "Verifies the UI blocks or flags invalid progress input outside the allowed range and does not accept the update.",
+    "category": "Update Reading Progress",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore books"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card to open its details"
+      },
+      {
+        "type": "action",
+        "description": "Set the book shelf to currently-reading"
+      },
+      {
+        "type": "action",
+        "description": "Fill an out-of-range value into the progress input (less than 0 or greater than 100)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a progress validation error is visible or the progress value is not accepted"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC036",
+    "title": "View reviews section on book details",
+    "description": "Verifies a visitor can reach the reviews section on a book details page and see reviews content or an empty state.",
+    "category": "View Book Details",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /explore"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card in the grid"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the reviews section"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify reviews content or an empty state is displayed"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC037",
+    "title": "See empty state when a shelf has no books",
+    "description": "Verifies that when a selected shelf has no books, an empty state is shown instead of an empty grid.",
+    "category": "View User Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "action",
+        "description": "Click the shelf tab most likely to be empty for a new user (such as read)"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state message is visible for the selected shelf"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC038",
+    "title": "Prevent registration with a too-short password",
+    "description": "Verifies registration is blocked when the password does not meet minimum length and a validation error is shown.",
+    "category": "User Authentication (Register & Login)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /register"
+      },
+      {
+        "type": "action",
+        "description": "Fill valid text into the username field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid email into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a too-short password into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a password validation error is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC039",
+    "title": "Idempotent add to same shelf does not create duplicates",
+    "description": "Verifies an authenticated member can select the same shelf for a book multiple times without creating duplicate library entries in the shelf list.",
+    "category": "Add Book to Library",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to explore the catalog"
+      },
+      {
+        "type": "action",
+        "description": "Click a book card in the grid"
+      },
+      {
+        "type": "action",
+        "description": "Select the want-to-read shelf option"
+      },
+      {
+        "type": "action",
+        "description": "Select the want-to-read shelf option"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the library"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the book appears only once in the want-to-read shelf list"
+      }
+    ],
+    "priority": "Low"
+  }
+]

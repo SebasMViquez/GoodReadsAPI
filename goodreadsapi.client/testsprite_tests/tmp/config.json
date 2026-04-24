@@ -1,0 +1,20 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:5173/explore",
+  "loginUser": "viquezdayanna81@gmail.com",
+  "loginPassword": "Prueba1234@",
+  "executionArgs": {
+    "projectName": "goodreadsapi.client",
+    "projectPath": "c:\\.NET\\WEB\\GoodReadsAPI\\goodreadsapi.client",
+    "testIds": [],
+    "additionalInstruction": "Focus on the user flows described: catalog discovery, book details view, add to library, view library, mark as favorite, update progress. Validate UI changes and basic interactions.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-U_HcrpW7CS0IG1RYSUvi1mNDl1KfWDbbY2Efwk7Yc0xl30YbUejSX8mTJ3XKRbrAlhMsaYM0iMKk-vVHq-8vVUQ00jHJhck8MAeQ6hMutBgvvCQVznpqYN9tJxqHPhcEQH4"
+    }
+  },
+  "serverPort": 51112,
+  "proxy": "http://d539c73c-b12d-4bc9-835e-e7ecd83f2067:nCcmJiwiKkxik3sJqAmDXQFyPTY01yN3@tun.testsprite.com:8080"
+}
